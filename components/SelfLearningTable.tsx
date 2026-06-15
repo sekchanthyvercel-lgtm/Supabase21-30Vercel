@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Zap, Plus, Trash2, Calendar, AlignLeft, AlignCenter, AlignRight, Highlighter, MousePointer2, Minus, Layout, Square, Quote, Settings2, FileUp, FileDown, Image as ImageIcon, Video, Music, FileText, Loader2, Wand2, Menu, ChevronLeft, GraduationCap, ChevronRight, Table, Grid3X3, Columns, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Palette, Italic, Underline, Strikethrough, Indent, Outdent, List, ListOrdered, CheckSquare, ChevronDown, MoreHorizontal, Download, Maximize2, Minimize2, Search, Archive, Folder, Star, Share2, Pencil, Lock, Unlock, ArrowRightLeft, Copy, GripVertical } from 'lucide-react';
+import { Zap, Undo, Redo, Plus, Trash2, Calendar, AlignLeft, AlignCenter, AlignRight, Highlighter, MousePointer2, Minus, Layout, Square, Quote, Settings2, FileUp, FileDown, Image as ImageIcon, Video, Music, FileText, Loader2, Wand2, Menu, ChevronLeft, GraduationCap, ChevronRight, Table, Grid3X3, Columns, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Palette, Italic, Underline, Strikethrough, Indent, Outdent, List, ListOrdered, CheckSquare, ChevronDown, MoreHorizontal, Download, Maximize2, Minimize2, Search, Archive, Folder, Star, Share2, Pencil, Lock, Unlock, ArrowRightLeft, Copy, GripVertical } from 'lucide-react';
 import { AppData, DPSSTopic } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 import { callNeuralEngine } from '../services/neuralEngine';
@@ -311,8 +311,7 @@ export const SelfLearningTable: React.FC<SelfLearningTableProps> = ({ data, onUp
 
   useEffect(() => {
     if (topics.length > 0) {
-      const topicExists = selectedTopicId ? findTopic(topics, selectedTopicId) !== null : false;
-      if (!selectedTopicId || !topicExists) {
+      if (!selectedTopicId) {
         setSelectedTopicId(topics[0].id);
       }
     } else {
@@ -1691,6 +1690,13 @@ export const SelfLearningTable: React.FC<SelfLearningTableProps> = ({ data, onUp
     } else {
       onUpdate({ ...data, selfLearningTopics: updated });
     }
+    setSelectedTopicId(newTopic.id);
+    if (parentId) {
+      setExpandedTopics(prev => ({ ...prev, [parentId]: true }));
+    }
+    if (window.innerWidth < 768) {
+       setIsSidebarOpen(false);
+    }
   };
 
   const getParentId = (items: DPSSTopic[], childId: string, parentId: string | null = null): string | null => {
@@ -1791,7 +1797,7 @@ export const SelfLearningTable: React.FC<SelfLearningTableProps> = ({ data, onUp
         return;
       }
     } else if (!isEmptyNewTopic) {
-      if (!confirm('Move this topic to Recycle Bin? OK / Cancel')) {
+      if (!confirm('Permanently delete this topic? This cannot be undone. OK / Cancel')) {
         return;
       }
     }
@@ -1800,7 +1806,7 @@ export const SelfLearningTable: React.FC<SelfLearningTableProps> = ({ data, onUp
       if (!Array.isArray(items)) return items;
       return items.map(item => {
         if (!item) return item;
-        if (String(item.id) === String(id)) return { ...item, deletedAt: new Date().toISOString() };
+        if (String(item.id) === String(id)) return { ...item, deleted: true } as any;
         if (item.children) return { ...item, children: markDeleted(item.children as any[]) };
         return item;
       });
@@ -2697,6 +2703,86 @@ export const SelfLearningTable: React.FC<SelfLearningTableProps> = ({ data, onUp
 
   const handleEditorKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     setTimeout(checkActiveTableCell, 15);
+    if (e.key === 'Enter') {
+      const selection = window.getSelection();
+      if (selection && selection.rangeCount > 0) {
+        const activeNode = selection.anchorNode;
+        if (activeNode) {
+          const parentEl = activeNode.nodeType === Node.ELEMENT_NODE ? (activeNode as HTMLElement) : activeNode.parentElement;
+          const li = parentEl?.closest('li');
+          if (li) {
+            const checklistSpan = li.querySelector('.task-checkbox') as HTMLElement | null;
+            if (checklistSpan) {
+              const marker = checklistSpan.innerText || '⬜';
+              const checkText = li.innerText.replace(marker, '').trim();
+              if (checkText === '') {
+                // Return to normal paragraph - exit the checklist!
+                e.preventDefault();
+                const parentUl = li.parentElement;
+                if (parentUl) {
+                  const newBlock = document.createElement('div');
+                  newBlock.innerHTML = '<br>';
+                  if (parentUl.nextSibling) {
+                    parentUl.parentElement?.insertBefore(newBlock, parentUl.nextSibling);
+                  } else {
+                    parentUl.parentElement?.appendChild(newBlock);
+                  }
+                  li.remove();
+                  if (parentUl.children.length === 0) {
+                    parentUl.remove();
+                  }
+                  const newRange = document.createRange();
+                  newRange.selectNodeContents(newBlock);
+                  newRange.collapse(true);
+                  selection.removeAllRanges();
+                  selection.addRange(newRange);
+                  setTimeout(() => {
+                    updateTopic(selectedTopic.id, { content: editorRef.current?.innerHTML || '' });
+                  }, 10);
+                }
+                return;
+              }
+
+              // Otherwise create a new checklist item with same marker
+              e.preventDefault();
+              const newLi = document.createElement('li');
+              newLi.style.display = 'flex';
+              newLi.style.gap = '8px';
+              newLi.style.alignItems = 'flex-start';
+              
+              const newCheckbox = document.createElement('span');
+              newCheckbox.contentEditable = 'false';
+              newCheckbox.className = 'task-checkbox';
+              newCheckbox.style.cursor = 'pointer';
+              newCheckbox.style.userSelect = 'none';
+              newCheckbox.innerText = marker;
+              
+              newLi.appendChild(newCheckbox);
+              
+              const textNode = document.createTextNode('');
+              newLi.appendChild(textNode);
+              
+              const parentUl = li.parentElement;
+              if (parentUl) {
+                parentUl.insertBefore(newLi, li.nextSibling);
+                
+                const newRange = document.createRange();
+                newRange.setStartAfter(newCheckbox);
+                newRange.setEndAfter(newCheckbox);
+                newRange.collapse(true);
+                selection.removeAllRanges();
+                selection.addRange(newRange);
+                
+                setTimeout(() => {
+                  updateTopic(selectedTopic.id, { content: editorRef.current?.innerHTML || '' });
+                }, 10);
+              }
+              return;
+            }
+          }
+        }
+      }
+    }
     if (e.key === 'Tab') {
       const selection = window.getSelection();
       if (!selection || selection.rangeCount === 0) return;
@@ -3234,7 +3320,7 @@ export const SelfLearningTable: React.FC<SelfLearningTableProps> = ({ data, onUp
       if (!Array.isArray(items)) return items;
       return items.map(item => {
         if (!item) return item;
-        if (item.id === topicToMove.id) return { ...item, deletedAt: new Date().toISOString() };
+        if (item.id === topicToMove.id) return { ...item, deleted: true } as any;
         if (item.children) return { ...item, children: markDeleted(item.children as any[]) };
         return item;
       });
@@ -3316,6 +3402,9 @@ export const SelfLearningTable: React.FC<SelfLearningTableProps> = ({ data, onUp
           onClick={() => {
             setSelectedTopicId(topic.id);
             setOpenMenuId(null);
+            if (window.innerWidth < 768) {
+               setIsSidebarOpen(false);
+            }
             if (hasChildren) {
               setExpandedTopics(prev => ({ ...prev, [topic.id]: !prev[topic.id] }));
             }
@@ -3616,6 +3705,7 @@ export const SelfLearningTable: React.FC<SelfLearningTableProps> = ({ data, onUp
       
       let htmlOutput = result.text.trim();
       htmlOutput = htmlOutput.replace(/^`{3}(html)?\n?/i, '').replace(/`{3}$/, '').trim();
+      htmlOutput = `<div class="mb-6 text-center"><h1 class="text-3xl md:text-4xl font-black text-slate-800 tracking-tight uppercase">${newTopicTitle}</h1></div>` + htmlOutput;
 
       // create new topic
       const newTopic: DPSSTopic = { 
@@ -3698,6 +3788,7 @@ export const SelfLearningTable: React.FC<SelfLearningTableProps> = ({ data, onUp
       
       let htmlOutput = result.text.trim();
       htmlOutput = htmlOutput.replace(/^`{3}(html)?\n?/i, '').replace(/`{3}$/, '').trim();
+      htmlOutput = `<div class="mb-6 text-center"><h1 class="text-3xl md:text-4xl font-black text-slate-800 tracking-tight uppercase">Action Plan: ${selectedTopic.title}</h1></div>` + htmlOutput;
 
       // create new topic
       const newTopic: DPSSTopic = { 
@@ -4231,47 +4322,108 @@ export const SelfLearningTable: React.FC<SelfLearningTableProps> = ({ data, onUp
                       {showMoreTools ? 'Hide' : 'More'}
                     </button>
 
+                    <div className="flex gap-1 bg-white/40 p-1 rounded-lg shrink-0">
+                      <button onClick={(e) => { e.preventDefault(); document.execCommand('undo'); }} className="p-1.5 hover:bg-white rounded text-slate-600 transition-colors" title="Undo"><Undo size={14} /></button>
+                      <button onClick={(e) => { e.preventDefault(); document.execCommand('redo'); }} className="p-1.5 hover:bg-white rounded text-slate-600 transition-colors" title="Redo"><Redo size={14} /></button>
+                    </div>
+
                     {showMoreTools && (
                       <div className="flex flex-wrap items-center gap-2 animate-in fade-in slide-in-from-left-2 duration-300">
                         <div className="h-6 w-px bg-white/30 mx-1" />
                         
                         <div className="flex gap-1 bg-white/40 p-1 rounded-lg shrink-0">
-                           <div className="relative group/list z-[150]">
-                            <button className="p-1.5 hover:bg-white rounded transition-colors text-slate-700 font-bold text-xs flex items-center gap-1" title="Bullets"><List size={14} /> <span className="text-[10px]">▼</span></button>
+                           <div className="relative group/list z-[150] hover:z-[300]">
+                            <button className="p-1.5 hover:bg-white rounded transition-colors text-slate-700 font-bold text-xs flex items-center gap-1" title="Bullets" onMouseDown={(e) => e.preventDefault()}><List size={14} /> <span className="text-[10px]">▼</span></button>
                             <div className="absolute hidden group-hover/list:grid grid-cols-5 gap-1 top-full left-0 bg-white shadow-xl border border-slate-200 p-2 rounded-xl z-[9999] w-[180px]">
                                {['•','🌹','⭐','🚗','❤️','✅','✨','🔥','🔮','🍃','🎵','👑','☀️','🌙','💎'].map(marker => (
-                                 <button key={marker} onClick={() => {
-                                    const html = `<ul style="list-style-type: none; padding-left: 20px;"><li>${marker} &nbsp;</li></ul><div><br></div>`;
-                                    document.execCommand('insertHTML', false, html);
+                                 <button key={marker} onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }} onClick={() => {
+                                    document.execCommand('insertUnorderedList');
+                                    if (marker !== '•') {
+                                      setTimeout(() => {
+                                        const sel = window.getSelection();
+                                        if (sel && sel.rangeCount > 0) {
+                                          const parentEl = sel.anchorNode?.nodeType === Node.ELEMENT_NODE 
+                                            ? (sel.anchorNode as HTMLElement) 
+                                            : sel.anchorNode?.parentElement;
+                                          const ul = parentEl?.closest?.('ul');
+                                          if (ul) {
+                                            (ul as HTMLElement).style.listStyleType = `"${marker} "`;
+                                          }
+                                        }
+                                        updateTopic(selectedTopic.id, { content: editorRef.current?.innerHTML || '' });
+                                      }, 10);
+                                    }
                                  }} className="p-1 hover:bg-slate-100 rounded text-center text-sm">{marker}</button>
                                ))}
                             </div>
                           </div>
 
-                          <div className="relative group/list2 z-[150]">
-                            <button className="p-1.5 hover:bg-white rounded transition-colors text-slate-700 font-bold text-xs flex items-center gap-1" title="Numbers"><ListOrdered size={14} /> <span className="text-[10px]">▼</span></button>
+                          <div className="relative group/list2 z-[150] hover:z-[300]">
+                            <button className="p-1.5 hover:bg-white rounded transition-colors text-slate-700 font-bold text-xs flex items-center gap-1" title="Numbers" onMouseDown={(e) => e.preventDefault()}><ListOrdered size={14} /> <span className="text-[10px]">▼</span></button>
                             <div className="absolute hidden group-hover/list2:flex flex-col gap-1 top-full left-0 bg-white shadow-xl border border-slate-200 p-2 rounded-xl z-[9999] w-[120px]">
                                {[ {n: '1.', t: 'decimal'}, {n:'1)', t: 'ol'}, {n:'1-', t: 'ol'}, {n:'I.', t:'upper-roman'}, {n:'i.', t:'lower-roman'}, {n:'A.', t:'upper-alpha'}, {n:'a.', t:'lower-alpha'}, {n:'①', t:'ol'} ].map(marker => (
-                                 <button key={marker.n} onClick={() => {
-                                    let html = '';
-                                    if (marker.t === 'ol') {
-                                       html = `<ul style="list-style-type: none; padding-left: 20px;"><li>${marker.n} &nbsp;</li></ul><div><br></div>`;
-                                    } else {
-                                       html = `<ol style="list-style-type: ${marker.t}; padding-left: 20px;"><li>&nbsp;</li></ol><div><br></div>`;
-                                    }
-                                    document.execCommand('insertHTML', false, html);
+                                 <button key={marker.n} onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }} onClick={() => {
+                                    document.execCommand('insertOrderedList');
+                                    setTimeout(() => {
+                                      const sel = window.getSelection();
+                                      if (sel && sel.rangeCount > 0) {
+                                        let node = sel.anchorNode;
+                                        while (node && node.nodeName !== 'OL' && node.nodeName !== 'DIV') { node = node.parentNode; }
+                                        if (node && node.nodeName === 'OL') {
+                                          if (marker.t === 'ol') {
+                                            (node as HTMLElement).style.listStyleType = "decimal";
+                                          } else {
+                                            (node as HTMLElement).style.listStyleType = marker.t;
+                                          }
+                                        }
+                                      }
+                                      updateTopic(selectedTopic.id, { content: editorRef.current?.innerHTML || '' });
+                                    }, 10);
                                  }} className="p-1 hover:bg-slate-100 rounded text-left text-xs font-bold">{marker.n} Type</button>
                                ))}
                             </div>
                           </div>
 
-                          <div className="relative group/list3 z-[150]">
-                            <button className="p-1.5 hover:bg-white rounded transition-colors text-slate-700 font-bold text-xs flex items-center gap-1" title="Checklist"><CheckSquare size={14} /> <span className="text-[10px]">▼</span></button>
+                          <div className="relative group/list3 z-[150] hover:z-[300]">
+                            <button className="p-1.5 hover:bg-white rounded transition-colors text-slate-700 font-bold text-xs flex items-center gap-1" title="Checklist" onMouseDown={(e) => e.preventDefault()}><CheckSquare size={14} /> <span className="text-[10px]">▼</span></button>
                             <div className="absolute hidden group-hover/list3:grid grid-cols-2 gap-1 top-full left-0 bg-white shadow-xl border border-slate-200 p-2 rounded-xl z-[9999] w-[140px]">
                                {['⬜', '[ ]', '🔳', '⚪', '🔴', '❎', '✓'].map((marker, idx) => (
-                                 <button key={idx} onClick={() => {
-                                    const html = `<ul style="list-style-type: none; padding-left: 20px;"><li style="display: flex; gap: 8px; align-items: flex-start;"><span contenteditable="false" class="task-checkbox" style="cursor: pointer; user-select: none;">${marker}</span><span>&nbsp;</span></li></ul><div><br></div>`;
-                                    document.execCommand('insertHTML', false, html);
+                                 <button key={idx} onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }} onClick={() => {
+                                    document.execCommand('insertUnorderedList');
+                                    setTimeout(() => {
+                                       const sel = window.getSelection();
+                                        if (sel && sel.rangeCount > 0) {
+                                          const parentEl = sel.anchorNode?.nodeType === Node.ELEMENT_NODE 
+                                            ? (sel.anchorNode as HTMLElement) 
+                                            : sel.anchorNode?.parentElement;
+                                          const ul = parentEl?.closest?.('ul');
+                                          if (ul) {
+                                            (ul as HTMLElement).style.listStyleType = 'none';
+                                            (ul as HTMLElement).style.paddingLeft = '20px';
+                                            
+                                            const li = parentEl?.closest?.('li');
+                                            if (li) {
+                                              (li as HTMLElement).style.display = 'flex';
+                                              (li as HTMLElement).style.gap = '8px';
+                                              (li as HTMLElement).style.alignItems = 'flex-start';
+                                              
+                                              // Remove any pre-existing task-checkbox inside this li to avoid stacking
+                                              const existingCh = li.querySelector('.task-checkbox');
+                                              if (existingCh) { existingCh.remove(); }
+                                              
+                                              const checkboxSpan = document.createElement('span');
+                                              checkboxSpan.contentEditable = 'false';
+                                              checkboxSpan.className = 'task-checkbox';
+                                              checkboxSpan.style.cursor = 'pointer';
+                                              checkboxSpan.style.userSelect = 'none';
+                                              checkboxSpan.innerText = marker;
+                                              
+                                              li.insertBefore(checkboxSpan, li.firstChild);
+                                            }
+                                          }
+                                        }
+                                        updateTopic(selectedTopic.id, { content: editorRef.current?.innerHTML || '' });
+                                    }, 10);
                                  }} className="p-1 hover:bg-slate-100 rounded text-center text-xs" dangerouslySetInnerHTML={{__html: marker}}></button>
                                ))}
                             </div>
@@ -5059,12 +5211,12 @@ export const SelfLearningTable: React.FC<SelfLearningTableProps> = ({ data, onUp
                       }
 
                       .editor-content ul {
-                        list-style-type: disc !important;
+                        list-style-type: disc;
                         padding-left: 14px !important;
                         margin-bottom: 10px !important;
                       }
                       .editor-content ol {
-                        list-style-type: decimal !important;
+                        list-style-type: decimal;
                         padding-left: 14px !important;
                         margin-bottom: 10px !important;
                       }
