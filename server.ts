@@ -112,6 +112,70 @@ app.use(express.json({ limit: '10mb' }));
   });
 
   // ==========================================
+  // Supabase Keep-Alive/Cron API Route
+  // ==========================================
+  app.get('/api/cron/keep-alive', async (req, res) => {
+    console.log("Supabase Keep-Alive Cron triggered.");
+    
+    // Verify Vercel Cron Secret (if configured to secure against unauthorized triggers)
+    const authHeader = req.headers.authorization;
+    const cronSecret = process.env.CRON_SECRET;
+    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+    
+    const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || 'https://kugvbcwrjzoxkabpjvcr.supabase.co';
+    const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || 'dummy-key';
+    
+    if (!supabaseUrl || supabaseUrl.includes('dummy') || !supabaseAnonKey || supabaseAnonKey.includes('dummy')) {
+      return res.status(200).json({
+        success: false,
+        message: 'Supabase credentials are not fully configured in environment variables. Skipped keep-alive ping.',
+        config: { url: !!supabaseUrl, key: !!supabaseAnonKey }
+      });
+    }
+
+    try {
+      // Construct the REST API url for querying the dps_data table
+      const cleanedUrl = supabaseUrl.replace(/\/+$/, '');
+      const testPingUrl = `${cleanedUrl}/rest/v1/dps_data?select=updated_at&limit=1`;
+      
+      console.log(`Pinging Supabase DB at: ${testPingUrl}`);
+      
+      const response = await fetch(testPingUrl, {
+        method: 'GET',
+        headers: {
+          'apikey': supabaseAnonKey,
+          'Authorization': `Bearer ${supabaseAnonKey}`,
+          'Accept': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
+      
+      const data = await response.json();
+      console.log("Supabase Keep-Alive query completed successfully. Rows returned:", data.length);
+      
+      return res.json({
+        success: true,
+        message: 'Successfully pinged and made active requests to Supabase database. Project is kept active!',
+        timestamp: new Date().toISOString(),
+        rows: data.length
+      });
+    } catch (error: any) {
+      console.error("Error keeping Supabase project alive:", error);
+      return res.status(500).json({
+        success: false,
+        error: error.message || String(error),
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  // ==========================================
   // MongoDB Real-time Sync API Routes
   // ==========================================
   
