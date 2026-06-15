@@ -190,9 +190,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         {/* Navigation & Filters */}
-        <div className="flex-1 pl-5 pr-7 py-6 space-y-8 overflow-y-auto overflow-x-hidden custom-scrollbar">
+        <div className="flex-1 pl-5 pr-4 py-6 space-y-8 overflow-y-auto overflow-x-hidden custom-scrollbar">
           {role && (
-            <div className="bg-orange-500/10 rounded-2xl p-4 border border-orange-500/20 mb-4">
+            <div className="bg-orange-500/10 rounded-2xl p-4 border border-orange-500/20 mb-4 w-[90%] relative">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-full bg-orange-500 flex items-center justify-center text-white text-[10px] font-black">
                   {currentUser?.name?.[0]?.toUpperCase() || 'U'}

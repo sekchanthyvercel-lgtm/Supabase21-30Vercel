@@ -45,6 +45,8 @@ export const SelfLearningTable: React.FC<SelfLearningTableProps> = ({ data, onUp
   const [isUploading, setIsUploading] = useState(false);
   const [isStudyPlanLoading, setIsStudyPlanLoading] = useState(false);
   const [isActionPlanLoading, setIsActionPlanLoading] = useState(false);
+  const [isEditorStudyPlanLoading, setIsEditorStudyPlanLoading] = useState(false);
+  const [isEditorActionPlanLoading, setIsEditorActionPlanLoading] = useState(false);
   const [showAIModal, setShowAIModal] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
     return localStorage.getItem('self_learning_sidebar_open') !== 'false';
@@ -3735,6 +3737,101 @@ export const SelfLearningTable: React.FC<SelfLearningTableProps> = ({ data, onUp
     }
   };
 
+  const generateEditorPlan = async (type: 'action' | 'study') => {
+    if (!selectedTopic) return;
+    if (isEditorActionPlanLoading || isEditorStudyPlanLoading) return;
+
+    let selectedText = '';
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0) {
+      selectedText = sel.toString().trim();
+    }
+    
+    // Fallback to full content if selection is empty or less than 10 chars
+    const contentToUse = selectedText.length > 10 ? selectedText : (editorRef.current ? (editorRef.current.innerText || editorRef.current.textContent || '') : '');
+
+    if (!contentToUse.trim()) {
+      alert("No content available to generate a plan from.");
+      return;
+    }
+
+    if (type === 'action') {
+      setIsEditorActionPlanLoading(true);
+    } else {
+      setIsEditorStudyPlanLoading(true);
+    }
+
+    try {
+      let prompt = '';
+      if (type === 'action') {
+        prompt = `Generate a highly practical, step-by-step Action Plan based strictly on the following excerpt/lesson: "${contentToUse}". 
+      Include daily routines, specific micro-habits, friction-reduction techniques, obstacles handling, and measurable criteria for success. Follow the style of Tony Robbins and Brendon Burchard AI styling.
+      Use professional HTML formatting, beautifully styled with Tailwind CSS.
+      STYLING AND CONTRAST MANDATES:
+      - ALWAYS wrap the top main heading (title) and description subtitle in a beautifully styled, centered block (e.g., div with text-center or items-center justify-center) to ensure it centers elegantly in the layout, exactly as in the professional template screenshots.
+      - Use an elegant, professional light-colored theme.
+      - NEVER use dark or black backgrounds (like bg-black, bg-gray-900, bg-slate-900) for any panels, structural blocks, or cards. ALWAYS use crisp, light colors.
+      - DO NOT default to or always use blue (or sky-blue or cyan) colors. You can use ANY premium colors (e.g., emerald green, warm amber, violet, terracotta/rust, plum, rose-brown), but keep it varied and professional.
+      - Contrast is critical: Make sure all text, numbers, list items, description paragraphs, and table/grid contents use highly readable deep charcoal/slate styles (e.g., text-slate-800, text-stone-900, or matching deep colors). NEVER use white, light-gray, or washed-out light text inside white/light cards or panels.
+      - Use clean, light borders (e.g., border-slate-200, border-stone-200) instead of thick dark backgrounds.
+      - For columns and grids, use clear, distinct borders or light shadows for clean alignment.
+      - IMPORTANT: Use 'w-full' or 'max-w-full' for all structural wrappers, tables, and block container elements. The content must span the entire full width of the view. Do NOT use fixed width classes like 'max-w-md', 'max-w-xl', 'max-w-2xl' or centered fixed wrappers like 'mx-auto'. Make the layout fluid and full-width.
+      - CARD AND NUMBERED LIST LAYOUTS: To save horizontal space in columns, do NOT use a two-column flex-row style (e.g., 'flex items-start gap-4') for card numbers/circles. Instead, use a floated inline layout where the circular number/badge has 'float: left; margin-right: 12px; margin-bottom: 6px;' (or class="float-left mr-3 mb-1.5"). This guarantees that lines of text flow seamlessly next to and wrap UNDERNEATH the circular number, using the full width of the card.
+      Do NOT wrap in markdown code blocks like \`\`\`html, just output raw, polished HTML directly. Do NOT include html, head, or body tags.`;
+      } else {
+        prompt = `Generate a comprehensive Study Plan based strictly on the following excerpt/lesson: "${contentToUse}".
+      Include spaced repetition schedules, active recall strategies, core concept breakdowns, and deep learning techniques. Follow the style of Tony Robbins and Brendon Burchard AI styling.
+      Use professional HTML formatting, beautifully styled with Tailwind CSS.
+      STYLING AND CONTRAST MANDATES:
+      - ALWAYS wrap the top main heading (title) and description subtitle in a beautifully styled, centered block (e.g., div with text-center or items-center justify-center) to ensure it centers elegantly in the layout.
+      - Use an elegant, professional light-colored theme.
+      - NEVER use dark or black backgrounds (like bg-black, bg-gray-900, bg-slate-900) for any panels, structural blocks, or cards. ALWAYS use crisp, light colors.
+      - DO NOT default to or always use blue colors. Use ANY premium colors (e.g., emerald green, warm amber, violet, terracotta/rust, plum, rose-brown), but keep it varied and professional.
+      - Contrast is critical: Make sure all text, numbers, list items, description paragraphs, and table/grid contents use highly readable deep charcoal/slate styles (e.g., text-slate-800, text-stone-900).
+      - Use clean, light borders (e.g., border-slate-200, border-stone-200) instead of thick dark backgrounds.
+      - For columns and grids, use clear, distinct borders or light shadows for clean alignment.
+      - IMPORTANT: Use 'w-full' or 'max-w-full' for all structural wrappers, tables, and block container elements. The content must span the entire full width of the view.
+      - CARD AND NUMBERED LIST LAYOUTS: To save horizontal space in columns, use a floated inline layout where the circular number/badge has 'float: left; margin-right: 12px; margin-bottom: 6px;' (or class="float-left mr-3 mb-1.5").
+      Do NOT wrap in markdown code blocks like \`\`\`html, just output raw, polished HTML directly. Do NOT include html, head, or body tags.`;
+      }
+
+      const result = await callNeuralEngine(
+        'gemini-3-flash-preview',
+        prompt,
+        "You are an expert performance psychologist and high-performance coach. Output ONLY valid HTML."
+      );
+      
+      let htmlOutput = result.text.trim();
+      htmlOutput = htmlOutput.replace(/^`{3}(html)?\n?/i, '').replace(/`{3}$/, '').trim();
+
+      // Append to the editor
+      if (editorRef.current) {
+        let currentHTML = editorRef.current.innerHTML;
+        const divider = '<div class="my-8 h-px bg-slate-200/60 w-full" contenteditable="false" data-separator="true"></div><br/>';
+        
+        editorRef.current.innerHTML = currentHTML + divider + htmlOutput;
+        handleInput(); // Trigger auto save
+        
+        // Scroll to the bottom
+        setTimeout(() => {
+          if (editorRef.current) {
+            editorRef.current.scrollTop = editorRef.current.scrollHeight;
+          }
+        }, 100);
+      }
+      
+    } catch(e) {
+      console.error(e);
+      alert('Failed to generate plan.');
+    } finally {
+      if (type === 'action') {
+        setIsEditorActionPlanLoading(false);
+      } else {
+        setIsEditorStudyPlanLoading(false);
+      }
+    }
+  };
+
   return (
     <div className="flex flex-col md:flex-row h-full md:h-full w-full p-0 gap-0 overflow-hidden relative">
       {/* Sidebar Panel - Mobile Slide-in Overlay */}
@@ -4475,8 +4572,28 @@ export const SelfLearningTable: React.FC<SelfLearningTableProps> = ({ data, onUp
                           )}
                         </div>
 
-                        <button onClick={insertDate} className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-emerald-500 to-orange-500 text-white rounded-lg text-xs font-bold hover:from-emerald-600 hover:to-orange-600 shadow-sm transition-colors">
-                          <Calendar size={14} /> Insert Date
+                        <button onClick={insertDate} className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-lg text-xs font-bold hover:from-emerald-600 hover:to-emerald-700 shadow-sm transition-colors" title="Insert Date at Cursor">
+                          <Calendar size={14} /> Date
+                        </button>
+
+                        <button 
+                          onClick={() => generateEditorPlan('action')} 
+                          disabled={isEditorActionPlanLoading || isEditorStudyPlanLoading}
+                          className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-lg text-xs font-bold hover:from-orange-600 hover:to-amber-600 shadow-sm transition-colors disabled:opacity-50"
+                          title="Generate Action Plan below selected text"
+                        >
+                          {isEditorActionPlanLoading ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} />}
+                          Action Plan
+                        </button>
+                        
+                        <button 
+                          onClick={() => generateEditorPlan('study')} 
+                          disabled={isEditorActionPlanLoading || isEditorStudyPlanLoading}
+                          className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-lg text-xs font-bold hover:from-indigo-600 hover:to-purple-600 shadow-sm transition-colors disabled:opacity-50"
+                          title="Generate Study Plan below selected text"
+                        >
+                          {isEditorStudyPlanLoading ? <Loader2 size={14} className="animate-spin" /> : <Wand2 size={14} />}
+                          Study Plan
                         </button>
                     </div>
                 )}
