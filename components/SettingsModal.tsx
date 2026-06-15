@@ -35,36 +35,68 @@ const colors = [
   { name: 'Amber', value: '#b45309' },
 ];
 
-const WALLPAPER_PRESETS = [
-  { name: 'Calm Oceanside Tracker', url: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&q=80&w=2000' },
-  { name: 'Ethereal Forest Mist', url: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&q=80&w=2000' },
-  { name: 'Nebula Starlight Cosmic', url: 'https://images.unsplash.com/photo-1506318137071-a8e063b4bec0?auto=format&fit=crop&q=80&w=2000' },
-  { name: 'Warm Minimalist Abstract', url: 'https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?auto=format&fit=crop&q=80&w=2000' },
-  { name: 'Classic Japanese Washi Accent', url: 'https://images.unsplash.com/photo-1528459801416-a9e53bbf4e17?auto=format&fit=crop&q=80&w=2000' },
-  { name: 'Serene Peak Sunrise Theme', url: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&q=80&w=2000' },
-  { name: 'Lofi Cozy Coffee Workspace', url: 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&q=80&w=2000' },
-  { name: 'Minimal Solid Slate Dark', url: 'https://images.unsplash.com/photo-1533035353720-f1c6a75cd8ab?auto=format&fit=crop&q=80&w=2000' },
-  
-  // Whites & Ivory
-  { name: 'Serenity Ivory Plaster', url: 'https://images.unsplash.com/photo-1517816743773-6e0fd518b4a6?auto=format&fit=crop&q=80&w=2000' },
-  { name: 'Sands of Silence Dunes', url: 'https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?auto=format&fit=crop&q=80&w=2000' },
-  { name: 'Minimal Alabaster Silk', url: 'https://images.unsplash.com/photo-1518156677180-95a2893f3e9f?auto=format&fit=crop&q=80&w=2000' },
-  
-  // Mooring Greens
-  { name: 'Whispering Willow Leaves', url: 'https://images.unsplash.com/photo-1512428559087-560fa5ceab42?auto=format&fit=crop&q=80&w=2000' },
-  { name: 'Mindful Sage Paint Brush', url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&q=80&w=2000' },
-  { name: 'Botanical Fern Sanctuary', url: 'https://images.unsplash.com/photo-1501004318641-724e645197c2?auto=format&fit=crop&q=80&w=2000' },
-  
-  // Calming Pinks
-  { name: 'Pastel Cherry Blossom Rain', url: 'https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?auto=format&fit=crop&q=80&w=2000' },
-  { name: 'Rose Quartz Aura Softness', url: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?auto=format&fit=crop&q=80&w=2000' },
-  { name: 'Dreamy Peach Watercolor', url: 'https://images.unsplash.com/photo-1560169897-fc0cdbdfa4d5?auto=format&fit=crop&q=80&w=2000' },
-
-  // Warm Oranges
-  { name: 'Sunlit Sandy Canyons', url: 'https://images.unsplash.com/photo-1615485290382-441e4d049cb5?auto=format&fit=crop&q=80&w=2000' },
-  { name: 'Autumn Amber Forest Pathway', url: 'https://images.unsplash.com/photo-1508739773434-c26b3d09e071?auto=format&fit=crop&q=80&w=2000' },
-  { name: 'Golden Quartz Horizon', url: 'https://images.unsplash.com/photo-1553570739-300e6e7373f6?auto=format&fit=crop&q=80&w=2000' }
-];
+const WALLPAPER_PRESETS_GROUPED = {
+  'Light Purple': [
+    { name: 'Lavender Mist', url: 'https://images.unsplash.com/photo-1550537687-c91072c4792d?auto=format&fit=crop&q=80&w=2000' },
+    { name: 'Purple Dreamscape', url: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?auto=format&fit=crop&q=80&w=2000' },
+    { name: 'Soft Purple Dawn', url: 'https://images.unsplash.com/photo-1518640467707-6811f4a6ab73?auto=format&fit=crop&q=80&w=2000' },
+    { name: 'Amethyst Texture', url: 'https://images.unsplash.com/photo-1505909182942-e2f09aee3e89?auto=format&fit=crop&q=80&w=2000' },
+    { name: 'Washi Purple', url: 'https://images.unsplash.com/photo-1528459801416-a9e53bbf4e17?auto=format&fit=crop&q=80&w=2000' },
+    { name: 'Lilac Floral Mix', url: 'https://images.unsplash.com/photo-1550684848-fac1c5b4e853?auto=format&fit=crop&q=80&w=2000' },
+    { name: 'Lavender Field', url: 'https://images.unsplash.com/photo-1520038410233-7141be7b6f97?auto=format&fit=crop&q=80&w=2000' },
+    { name: 'Purple Hues', url: 'https://images.unsplash.com/photo-1616423640778-28d1b53229bd?auto=format&fit=crop&q=80&w=2000' },
+    { name: 'Soft Purple Sky', url: 'https://images.unsplash.com/photo-1500462918059-b1a0cb512f1d?auto=format&fit=crop&q=80&w=2000' },
+    { name: 'Violet Waves', url: 'https://images.unsplash.com/photo-1528465424850-54d22f092f9d?auto=format&fit=crop&q=80&w=2000' },
+  ],
+  'Light Green': [
+    { name: 'Whispering Willow Leaves', url: 'https://images.unsplash.com/photo-1512428559087-560fa5ceab42?auto=format&fit=crop&q=80&w=2000' },
+    { name: 'Mindful Sage Paint', url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&q=80&w=2000' },
+    { name: 'Botanical Fern', url: 'https://images.unsplash.com/photo-1501004318641-724e645197c2?auto=format&fit=crop&q=80&w=2000' },
+    { name: 'Matcha Greens', url: 'https://images.unsplash.com/photo-1523712999610-f77fbcfc3843?auto=format&fit=crop&q=80&w=2000' },
+    { name: 'Mint Morning Dew', url: 'https://images.unsplash.com/photo-1472214103451-9374bd1c798e?auto=format&fit=crop&q=80&w=2000' },
+    { name: 'Serenity Green Space', url: 'https://images.unsplash.com/photo-1505506874110-6a7a48e1a1bd?auto=format&fit=crop&q=80&w=2000' },
+    { name: 'Light Olive Texture', url: 'https://images.unsplash.com/photo-1533038590840-1cbea6e8140f?auto=format&fit=crop&q=80&w=2000' },
+    { name: 'Pale Green Flora', url: 'https://images.unsplash.com/photo-1517482811406-8c20577d4c0b?auto=format&fit=crop&q=80&w=2000' },
+    { name: 'Subtle Celadon', url: 'https://images.unsplash.com/photo-1549488344-c5a4d67cd2b2?auto=format&fit=crop&q=80&w=2000' },
+    { name: 'Green Minimalist Canvas', url: 'https://images.unsplash.com/photo-1533227260815-a56cf099f6b9?auto=format&fit=crop&q=80&w=2000' },
+  ],
+  'Light White': [
+    { name: 'Serenity Ivory Plaster', url: 'https://images.unsplash.com/photo-1517816743773-6e0fd518b4a6?auto=format&fit=crop&q=80&w=2000' },
+    { name: 'Minimal Alabaster Silk', url: 'https://images.unsplash.com/photo-1518156677180-95a2893f3e9f?auto=format&fit=crop&q=80&w=2000' },
+    { name: 'Pure Cotton', url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=2000' },
+    { name: 'Clean Desk Space', url: 'https://images.unsplash.com/photo-1498084393753-b411b2d26f5d?auto=format&fit=crop&q=80&w=2000' },
+    { name: 'White Marble Clean', url: 'https://images.unsplash.com/photo-1506084803934-8c858bd966aa?auto=format&fit=crop&q=80&w=2000' },
+    { name: 'Soft Light Texture', url: 'https://images.unsplash.com/photo-1495195129352-aeb325a55b65?auto=format&fit=crop&q=80&w=2000' },
+    { name: 'Cloud White Blank', url: 'https://images.unsplash.com/photo-1502239608882-93b729c6af43?auto=format&fit=crop&q=80&w=2000' },
+    { name: 'White Aesthetic Minimal', url: 'https://images.unsplash.com/photo-1478760329108-5c3ed9d495a0?auto=format&fit=crop&q=80&w=2000' },
+    { name: 'Snow Soft Morning', url: 'https://images.unsplash.com/photo-1486520299386-6d106b22014b?auto=format&fit=crop&q=80&w=2000' },
+    { name: 'White Linen Feel', url: 'https://images.unsplash.com/photo-1493612276216-ee3925520721?auto=format&fit=crop&q=80&w=2000' },
+  ],
+  'Light Gray': [
+    { name: 'Minimal Solid Slate Light', url: 'https://images.unsplash.com/photo-1533035353720-f1c6a75cd8ab?auto=format&fit=crop&q=80&w=2000' },
+    { name: 'Silver Tone Clean', url: 'https://images.unsplash.com/photo-1529333166437-7750a6dd5a70?auto=format&fit=crop&q=80&w=2000' },
+    { name: 'Grey Minimal Architecture', url: 'https://images.unsplash.com/photo-1515549832467-8783363e19b6?auto=format&fit=crop&q=80&w=2000' },
+    { name: 'Dusty Fog Calm', url: 'https://images.unsplash.com/photo-1511447333015-45b65e60f6d5?auto=format&fit=crop&q=80&w=2000' },
+    { name: 'Ash Grey Gradient', url: 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&q=80&w=2000' },
+    { name: 'Pebble Smooth Concept', url: 'https://images.unsplash.com/photo-1513569771920-c9e1d31714fc?auto=format&fit=crop&q=80&w=2000' },
+    { name: 'Concrete Gentle Textures', url: 'https://images.unsplash.com/photo-1477505982272-dec890ae6bff?auto=format&fit=crop&q=80&w=2000' },
+    { name: 'Foggy Stone Blur', url: 'https://images.unsplash.com/photo-1444491741275-3747c53c99b4?auto=format&fit=crop&q=80&w=2000' },
+    { name: 'Soft Neutral Gray', url: 'https://images.unsplash.com/photo-1481555716071-8830d1e5c6ec?auto=format&fit=crop&q=80&w=2000' },
+    { name: 'Grey Monochrome Abstract', url: 'https://images.unsplash.com/photo-1470790376778-a9fbc86d70e2?auto=format&fit=crop&q=80&w=2000' },
+  ],
+  'Orange': [
+    { name: 'Sunlit Sandy Canyons', url: 'https://images.unsplash.com/photo-1615485290382-441e4d049cb5?auto=format&fit=crop&q=80&w=2000' },
+    { name: 'Autumn Amber Pathway', url: 'https://images.unsplash.com/photo-1508739773434-c26b3d09e071?auto=format&fit=crop&q=80&w=2000' },
+    { name: 'Golden Quartz Horizon', url: 'https://images.unsplash.com/photo-1553570739-300e6e7373f6?auto=format&fit=crop&q=80&w=2000' },
+    { name: 'Tangerine Dream', url: 'https://images.unsplash.com/photo-1497215848128-444fc6ad4931?auto=format&fit=crop&q=80&w=2000' },
+    { name: 'Soft Citrus Light', url: 'https://images.unsplash.com/photo-1517614081395-65cf8593cc18?auto=format&fit=crop&q=80&w=2000' },
+    { name: 'Apricot Sky Setting', url: 'https://images.unsplash.com/photo-1507608616759-54f48f0af0ee?auto=format&fit=crop&q=80&w=2000' },
+    { name: 'Coral Warmth', url: 'https://images.unsplash.com/photo-1460505193952-b88d4474fdd9?auto=format&fit=crop&q=80&w=2000' },
+    { name: 'Persimmon Autumn', url: 'https://images.unsplash.com/photo-1533664404090-e555986fe7f0?auto=format&fit=crop&q=80&w=2000' },
+    { name: 'Light Orange Abstract', url: 'https://images.unsplash.com/photo-1555519894-3a56885dfd78?auto=format&fit=crop&q=80&w=2000' },
+    { name: 'Marigold Calm Scene', url: 'https://images.unsplash.com/photo-1490680194605-e4d06a4cb991?auto=format&fit=crop&q=80&w=2000' }
+  ]
+};
 
 const getDirectAuthProvidersUrl = (): string => {
   try {
@@ -680,31 +712,38 @@ export const SettingsModal: React.FC<Props> = ({ isOpen, onClose, settings, onUp
 
                 <div className="bg-white/50 border border-white/60 p-4 rounded-2xl space-y-4 shadow-sm">
                     {/* Preset wallpapers selection */}
-                    <div>
+                    <div className="space-y-2">
                         <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest pl-1 mb-2">Preset Wallpapers</p>
-                        <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-1 no-scrollbar border border-slate-200/50 p-1.5 rounded-xl bg-white/40">
-                            {WALLPAPER_PRESETS.map((preset) => {
-                                const isActive = localSettings.backgroundImage === preset.url;
-                                return (
-                                    <button
-                                        type="button"
-                                        key={preset.name}
-                                        onClick={() => setLocalSettings(prev => ({ ...prev, backgroundImage: preset.url }))}
-                                        className={`group relative h-14 rounded-lg overflow-hidden border text-left transition-all ${isActive ? 'ring-2 ring-emerald-500 border-transparent shadow shadow-emerald-500/20' : 'border-slate-200/60 hover:border-slate-300'}`}
-                                    >
-                                        <img src={preset.url} className="absolute inset-0 w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" alt={preset.name} />
-                                        <div className="absolute inset-0 bg-slate-905/40 group-hover:bg-slate-905/30 transition-colors" />
-                                        <div className="absolute bottom-1 left-1.5 right-1.5">
-                                            <p className="text-[9px] font-black text-white leading-tight truncate drop-shadow-sm">{preset.name}</p>
-                                        </div>
-                                        {isActive && (
-                                            <div className="absolute top-1 right-1 bg-emerald-500 text-white rounded-full p-0.5 shadow-sm">
-                                                <Check size={10} strokeWidth={3} />
-                                            </div>
-                                        )}
-                                    </button>
-                                );
-                            })}
+                        <div className="space-y-6 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
+                            {Object.entries(WALLPAPER_PRESETS_GROUPED).map(([category, presets]) => (
+                                <div key={category}>
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1 mb-2">{category}</p>
+                                    <div className="grid grid-cols-2 gap-2 border border-slate-200/50 p-1.5 rounded-xl bg-white/40">
+                                        {presets.map((preset) => {
+                                            const isActive = localSettings.backgroundImage === preset.url;
+                                            return (
+                                                <button
+                                                    type="button"
+                                                    key={preset.name}
+                                                    onClick={() => setLocalSettings(prev => ({ ...prev, backgroundImage: preset.url }))}
+                                                    className={`group relative h-14 rounded-lg overflow-hidden border text-left transition-all ${isActive ? 'ring-2 ring-emerald-500 border-transparent shadow shadow-emerald-500/20' : 'border-slate-200/60 hover:border-slate-300'}`}
+                                                >
+                                                    <img src={preset.url} className="absolute inset-0 w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" alt={preset.name} />
+                                                    <div className="absolute inset-0 bg-slate-905/40 group-hover:bg-slate-905/30 transition-colors" />
+                                                    <div className="absolute bottom-1 left-1.5 right-1.5">
+                                                        <p className="text-[9px] font-black text-white leading-tight truncate drop-shadow-sm">{preset.name}</p>
+                                                    </div>
+                                                    {isActive && (
+                                                        <div className="absolute top-1 right-1 bg-emerald-500 text-white rounded-full p-0.5 shadow-sm">
+                                                            <Check size={10} strokeWidth={3} />
+                                                        </div>
+                                                    )}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     </div>
 

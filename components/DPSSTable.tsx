@@ -22,6 +22,7 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
     return saved === null ? true : saved === 'true';
   });
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [menuPlacement, setMenuPlacement] = useState<'down' | 'up'>('down');
   const [sharingTopicId, setSharingTopicId] = useState<string | null>(null);
   const [generatedShareLink, setGeneratedShareLink] = useState<string | null>(null);
   const [isCopied, setIsCopied] = useState(false);
@@ -159,6 +160,35 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
   const initialNextWidthRef = useRef(0);
   const editorRef = useRef<HTMLDivElement>(null);
   const savedRange = useRef<Range | null>(null);
+
+  // Cross-Platform Persistent Scrollbar Trackers
+  const sidebarScrollRef = useRef<HTMLDivElement>(null);
+  const [sidebarScrollState, setSidebarScrollState] = useState({
+    scrollTop: 0,
+    scrollHeight: 0,
+    clientHeight: 0,
+  });
+
+  const updateSidebarScroll = () => {
+    if (sidebarScrollRef.current) {
+      const { scrollTop, scrollHeight, clientHeight } = sidebarScrollRef.current;
+      setSidebarScrollState({ scrollTop, scrollHeight, clientHeight });
+    }
+  };
+
+  useEffect(() => {
+    // Keep sidebar scroll info instantly synced
+    updateSidebarScroll();
+    // Also use multiple short delays to handle layout adjustments after content expands or loads
+    const t1 = setTimeout(updateSidebarScroll, 50);
+    const t2 = setTimeout(updateSidebarScroll, 150);
+    const t3 = setTimeout(updateSidebarScroll, 350);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+    };
+  }, [data, sidebarFilter, searchTerm, isSidebarOpen, expandedTopics]);
 
   const exportPDF = async (customStyle?: 'executive' | 'handwritten' | 'minimalist' | 'academic' | 'retro' | 'medium_bg' | 'light_bg' | 'no_bg') => {
     if (!editorRef.current) return;
@@ -3009,7 +3039,22 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
           <div className="flex gap-1 shrink-0">
             <div className="relative shrink-0">
               <button 
-                onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === topic.id ? null : topic.id); }}
+                onClick={(e) => { 
+                  e.stopPropagation(); 
+                  if (openMenuId === topic.id) {
+                    setOpenMenuId(null);
+                  } else {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    const spaceBelow = window.innerHeight - rect.bottom;
+                    const spaceAbove = rect.top;
+                    if (spaceBelow < 260 && spaceAbove > spaceBelow) {
+                      setMenuPlacement('up');
+                    } else {
+                      setMenuPlacement('down');
+                    }
+                    setOpenMenuId(topic.id);
+                  }
+                }}
                 className={`p-1.5 rounded transition-all flex items-center ${openMenuId === topic.id ? 'bg-slate-300/60 dark:bg-slate-700 text-slate-800 dark:text-slate-200' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800'}`}
                 title="More Options"
               >
@@ -3017,7 +3062,7 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
               </button>
               
               {openMenuId === topic.id && (
-                <div className="absolute right-0 top-full mt-2 bg-white dark:bg-slate-800 shadow-xl rounded-xl border border-slate-200 dark:border-slate-700 py-1.5 flex flex-col min-w-[160px] z-[100]"
+                <div className={`absolute right-0 ${menuPlacement === 'up' ? 'bottom-full mb-2' : 'top-full mt-2'} bg-white dark:bg-slate-800 shadow-xl rounded-xl border border-slate-200 dark:border-slate-700 py-1.5 flex flex-col min-w-[160px] z-[100] max-h-[250px] md:max-h-none overflow-y-auto custom-scrollbar`}
                      onClick={e => e.stopPropagation()}
                 >
                     <div className="flex px-2 pb-1 gap-1 border-b border-slate-100 dark:border-slate-700 mb-1">
@@ -3186,8 +3231,13 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
           </button>
         </div>
 
-        {/* Unifed Scrollable Column containing action buttons, search, topics, and folder archive */}
-        <div className="flex-1 overflow-y-auto pr-1 -mr-1 space-y-3 max-[767px]:landscape:space-y-2.5 custom-scrollbar flex flex-col min-h-0 overscroll-contain pb-24 touch-pan-y">
+        {/* Unifed Scrollable Column wrapped with a relative container for persistent custom touchscreen scrollbar */}
+        <div className="relative flex-1 min-h-0 flex flex-col">
+          <div 
+            ref={sidebarScrollRef}
+            onScroll={updateSidebarScroll}
+            className="flex-1 overflow-y-auto pr-8 space-y-3 max-[767px]:landscape:space-y-2.5 hide-native-scrollbar flex flex-col min-h-0 overscroll-contain pb-24 touch-pan-y w-[87%] md:w-full"
+          >
           <div className="flex flex-col gap-2.5 shrink-0">
             {/* Equal sized Action Buttons Grid */}
             <div className="grid grid-cols-2 gap-2 w-full animate-in fade-in">
@@ -3291,6 +3341,56 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
               )}
             </div>
           )}
+          </div>
+
+          {/* Custom Simulated Scrollbar (Always visible on touchscreens & mobile platforms) */}
+          {(() => {
+            const canScrollSidebar = sidebarScrollState.scrollHeight > sidebarScrollState.clientHeight && sidebarScrollState.clientHeight > 0;
+            if (!canScrollSidebar) return null;
+
+            const containerHeight = sidebarScrollState.clientHeight;
+            const thumbHeight = Math.max(32, Math.round((containerHeight / sidebarScrollState.scrollHeight) * containerHeight));
+            const maxScrollTop = sidebarScrollState.scrollHeight - containerHeight;
+            const percent = maxScrollTop > 0 ? sidebarScrollState.scrollTop / maxScrollTop : 0;
+            const thumbOffset = Math.round(percent * (containerHeight - thumbHeight));
+
+            const handlePointerDown = (e: React.PointerEvent) => {
+              e.preventDefault();
+              const startY = e.clientY;
+              const startScrollTop = sidebarScrollState.scrollTop;
+
+              const handlePointerMove = (moveEvent: PointerEvent) => {
+                const deltaY = moveEvent.clientY - startY;
+                const scrollRatio = sidebarScrollState.scrollHeight / containerHeight;
+                if (sidebarScrollRef.current) {
+                  sidebarScrollRef.current.scrollTop = startScrollTop + deltaY * scrollRatio;
+                }
+              };
+
+              const handlePointerUp = () => {
+                document.removeEventListener('pointermove', handlePointerMove);
+                document.removeEventListener('pointerup', handlePointerUp);
+              };
+
+              document.addEventListener('pointermove', handlePointerMove);
+              document.addEventListener('pointerup', handlePointerUp);
+            };
+
+            return (
+              <div 
+                className="absolute right-[13%] md:right-1 top-1 bottom-1 w-3 bg-slate-200/50 dark:bg-slate-800/60 rounded-full z-[100] flex justify-center py-1 overflow-visible"
+              >
+                <div 
+                  onPointerDown={handlePointerDown}
+                  className="w-full bg-gradient-to-b from-orange-400 via-purple-500 to-green-500 rounded-full cursor-grab active:cursor-grabbing hover:opacity-100 opacity-90 transition-opacity touch-none shadow-sm"
+                  style={{
+                    height: `${thumbHeight}px`,
+                    transform: `translateY(${Math.max(0, thumbOffset)}px)`,
+                  }}
+                />
+              </div>
+            );
+          })()}
         </div>
 
         {/* Resizable drag handle (Touch + Mouse friendly) */}
@@ -4123,9 +4223,21 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
                   
                   return (
                     <style dangerouslySetInnerHTML={{ __html: `
-                      .custom-scrollbar {
+                      .hide-native-scrollbar {
+                        scrollbar-width: none !important;
+                        -ms-overflow-style: none !important;
                         overflow-y: scroll !important;
                         -webkit-overflow-scrolling: touch !important;
+                      }
+                      .hide-native-scrollbar::-webkit-scrollbar {
+                        display: none !important;
+                        width: 0 !important;
+                        height: 0 !important;
+                      }
+
+                      .custom-scrollbar {
+                        overflow-y: scroll !important;
+                        -webkit-overflow-scrolling: auto !important;
                       }
                       .custom-scrollbar::-webkit-scrollbar {
                         -webkit-appearance: none !important;
