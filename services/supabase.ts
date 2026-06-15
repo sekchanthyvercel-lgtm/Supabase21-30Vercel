@@ -52,7 +52,7 @@ let lastSyncStatus = false;
 let isConfigCheckInProgress = false;
 
 // @ts-ignore
-let supabaseUrlRaw = import.meta.env.VITE_SUPABASE_URL || '';
+let supabaseUrlRaw = import.meta.env.VITE_SUPABASE_URL || import.meta.env.NEXT_PUBLIC_SUPABASE_URL || import.meta.env.SUPABASE_URL || '';
 if (supabaseUrlRaw) {
   if (!supabaseUrlRaw.startsWith('http')) {
     supabaseUrlRaw = `https://${supabaseUrlRaw}`;
@@ -61,7 +61,7 @@ if (supabaseUrlRaw) {
 }
 const supabaseUrl = supabaseUrlRaw || undefined;
 // @ts-ignore
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || import.meta.env.SUPABASE_ANON_KEY;
 
 const isConfigured = !!supabaseUrl && !!supabaseAnonKey && !supabaseAnonKey.includes('dummy');
 

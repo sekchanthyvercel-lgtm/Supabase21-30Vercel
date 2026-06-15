@@ -147,7 +147,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       <aside 
         className={`fixed md:relative h-full z-50 md:z-40 bg-white/[0.02] backdrop-blur-md border-r border-white/10 text-slate-900 flex flex-col transition-all duration-300 ease-in-out overflow-hidden shadow-2xl no-print shrink-0 ${
-          isOpen ? 'w-[300px] translate-x-0' : 'w-0 -translate-x-full md:translate-x-0 overflow-hidden'
+          isOpen ? 'w-[270px] translate-x-0' : 'w-0 -translate-x-full md:translate-x-0 overflow-hidden'
         }`}
       >
         {/* Branding Area with Collapse Toggle */}
@@ -190,7 +190,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         {/* Navigation & Filters */}
-        <div className="flex-1 px-5 py-6 space-y-8 overflow-y-auto custom-scrollbar">
+        <div className="flex-1 pl-5 pr-7 py-6 space-y-8 overflow-y-auto overflow-x-hidden custom-scrollbar">
           {role && (
             <div className="bg-orange-500/10 rounded-2xl p-4 border border-orange-500/20 mb-4">
               <div className="flex items-center gap-3">
