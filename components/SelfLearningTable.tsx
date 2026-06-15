@@ -3803,14 +3803,17 @@ export const SelfLearningTable: React.FC<SelfLearningTableProps> = ({ data, onUp
       
       let htmlOutput = result.text.trim();
       htmlOutput = htmlOutput.replace(/^`{3}(html)?\n?/i, '').replace(/`{3}$/, '').trim();
+      
+      const planTitle = type === 'action' ? '⚡ Action Plan' : '🪄 Study Plan';
+      htmlOutput = `<div class="mb-4 text-center"><h2 class="text-2xl font-black text-slate-800 tracking-tight">${planTitle}</h2></div>` + htmlOutput;
 
       // Append to the editor
-      if (editorRef.current) {
+      if (editorRef.current && selectedTopic) {
         let currentHTML = editorRef.current.innerHTML;
         const divider = '<div class="my-8 h-px bg-slate-200/60 w-full" contenteditable="false" data-separator="true"></div><br/>';
         
         editorRef.current.innerHTML = currentHTML + divider + htmlOutput;
-        handleInput(); // Trigger auto save
+        updateTopic(selectedTopic.id, { content: editorRef.current.innerHTML }); // Trigger auto save
         
         // Scroll to the bottom
         setTimeout(() => {
