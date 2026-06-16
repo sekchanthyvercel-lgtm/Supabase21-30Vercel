@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Zap, Undo, Redo, Plus, Trash2, Calendar, AlignLeft, AlignCenter, AlignRight, Highlighter, Type, Settings2, MousePointer2, Minus, Layout, Square, Quote, FileUp, FileDown, Loader2, Wand2, Menu, ChevronLeft, FileText, ChevronDown, ChevronRight, Table, Grid3X3, Columns, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Palette, Italic, Underline, Strikethrough, Indent, Outdent, List, ListOrdered, CheckSquare, MoreHorizontal, Download, Maximize2, Minimize2, Search, Archive, Folder, Star, Share2, Pencil, Lock, Unlock, ArrowRightLeft, GraduationCap, Copy, GripVertical } from 'lucide-react';
+import { Zap, Undo, Redo, Plus, Trash2, Calendar, AlignLeft, AlignCenter, AlignRight, Highlighter, Type, Settings2, MousePointer2, Minus, Layout, Square, Quote, FileUp, FileDown, Loader2, Wand2, Menu, ChevronLeft, FileText, ChevronDown, ChevronRight, Table, Grid3X3, Columns, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Palette, Italic, Underline, Strikethrough, Indent, Outdent, List, ListOrdered, CheckSquare, MoreHorizontal, Download, Maximize2, Minimize2, Search, Archive, Folder, Star, Share2, Pencil, Lock, Unlock, ArrowRightLeft, GraduationCap, Copy, GripVertical, Ruler } from 'lucide-react';
 import { AppData, DPSSTopic } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 import { callNeuralEngine } from '../services/neuralEngine';
@@ -16,6 +16,8 @@ interface DPSSTableProps {
 
 export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTopic, onOpenSidebar }) => {
   const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null);
+  const [isTableResizeLocked, setIsTableResizeLocked] = useState(true);
+  const [showRuler, setShowRuler] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isEditorStudyPlanLoading, setIsEditorStudyPlanLoading] = useState(false);
   const [isEditorActionPlanLoading, setIsEditorActionPlanLoading] = useState(false);
@@ -149,7 +151,7 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedTopics, setExpandedTopics] = useState<Record<string, boolean>>({});
   const [isArchiveFolderOpen, setIsArchiveFolderOpen] = useState(false);
-  const [sidebarFilter, setSidebarFilter] = useState<'files' | 'stars'>('files');
+  const [sidebarFilter, setSidebarFilter] = useState<'files' | 'stars' | 'smart'>('files');
   const [editingTopicId, setEditingTopicId] = useState<string | null>(null);
   const [editingTopicTitle, setEditingTopicTitle] = useState<string>('');
   const [activeTableCell, setActiveTableCell] = useState<HTMLTableCellElement | null>(null);
@@ -1090,7 +1092,7 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
   
   const dpssSettings = data.settings || { fontSize: 12, fontFamily: "'Inter', sans-serif" };
   const textFontFamily = dpssSettings.textFontFamily || dpssSettings.fontFamily;
-  const textFontSize = dpssSettings.textFontSize || dpssSettings.fontSize;
+  const textFontSize = Math.max(16, dpssSettings.textFontSize || dpssSettings.fontSize || 16);
   const tableBorderThickness = dpssSettings.tableBorderThickness !== undefined ? dpssSettings.tableBorderThickness : 2;
   const tableBorderColor = dpssSettings.tableBorderColor || '#334155';
   const paperStyle = dpssSettings.paperStyle || 'none';
@@ -1175,6 +1177,35 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
     return filterTopicsBySearch(activeTopics, searchTerm);
   }, [activeTopics, searchTerm]);
 
+  // Scoring and sorting logic for the Smart Show feature
+  const smartSortedTopics = React.useMemo(() => {
+    const getTopicScore = (t: DPSSTopic): number => {
+      const content = t.content || '';
+      // Weigh pending checkboxes highly (completed or default unchecked)
+      const incompleteCount = (content.match(/⬜|\[\s*\]/g) || []).length;
+      const totalChecklists = (content.match(/⬜|✅|\[\s*\]|\[x\]/ig) || []).length;
+      const contentLen = content.length;
+      const attachmentsCount = (t.attachments || []).length;
+      
+      return (incompleteCount * 30) + (totalChecklists * 5) + (contentLen * 0.02) + (attachmentsCount * 15);
+    };
+
+    const sortRecursively = (items: DPSSTopic[]): DPSSTopic[] => {
+      return [...items]
+        .map(t => ({
+          ...t,
+          children: t.children ? sortRecursively(t.children) : []
+        }))
+        .sort((a, b) => getTopicScore(b) - getTopicScore(a));
+    };
+
+    return sortRecursively(activeTopics);
+  }, [activeTopics]);
+
+  const filteredSmartTopics = React.useMemo(() => {
+    return filterTopicsBySearch(smartSortedTopics, searchTerm);
+  }, [smartSortedTopics, searchTerm]);
+
   const filteredArchivedTopics = React.useMemo(() => {
     return filterTopicsBySearch(archivedTopics, searchTerm);
   }, [archivedTopics, searchTerm]);
@@ -1248,6 +1279,7 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
   };
 
   const getCellResizeTarget = (clientX: number, cell: HTMLTableCellElement, threshold: number = 8) => {
+    if (isTableResizeLocked) return null;
     const rect = cell.getBoundingClientRect();
     if (Math.abs(clientX - rect.right) <= threshold) {
       return cell;
@@ -1676,7 +1708,7 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
       if (!Array.isArray(items)) return items;
       return items.map(item => {
         if (!item) return item;
-        if (String(item.id) === String(id)) return { ...item, deleted: true } as any;
+        if (String(item.id) === String(id)) return { ...item, deleted: true, deletedAt: new Date().toISOString() } as any;
         if (item.children) return { ...item, children: markDeleted(item.children as any[]) };
         return item;
       });
@@ -1877,7 +1909,14 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
   };
 
   const handleShareTopic = (topic: any) => {
-    setSharingTopic(topic);
+    if (editorRef.current && selectedTopic && String(selectedTopic.id) === String(topic.id)) {
+      // Save current screen text immediately into state BEFORE opening slide / share menu
+      const updatedTopic = { ...topic, content: editorRef.current.innerHTML };
+      updateTopic(selectedTopic.id, { content: editorRef.current.innerHTML });
+      setSharingTopic(updatedTopic);
+    } else {
+      setSharingTopic(topic);
+    }
     setGeneratedShareLink(null);
     setCloudShareError(null);
     setIsCloudShareLoading(false);
@@ -1930,7 +1969,7 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
       if (!Array.isArray(items)) return items;
       return items.map(item => {
         if (!item) return item;
-        if (item.id === topicToMove.id) return { ...item, deleted: true } as any;
+        if (item.id === topicToMove.id) return { ...item, deleted: true, deletedAt: new Date().toISOString() } as any;
         if (item.children) return { ...item, children: markDeleted(item.children as any[]) };
         return item;
       });
@@ -2220,6 +2259,109 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
         selection?.addRange(range);
       }
       document.execCommand('insertHTML', false, qaHtml);
+      updateTopic(selectedTopic.id, { content: editorRef.current.innerHTML });
+    }
+  };
+
+  const insertBrainstormCard = (theme = 'violet') => {
+    if (!selectedTopic) return;
+    const configs: Record<string, { border: string; bg: string; title: string; desc: string; inner: string }> = {
+      violet: { border: '#ddd6fe', bg: '#f5f3ff', title: '#6d28d9', desc: '#4c1d95', inner: '#ddd6fe' },
+      emerald: { border: '#bbf7d0', bg: '#f0fdf4', title: '#047857', desc: '#064e3b', inner: '#bbf7d0' },
+      rose: { border: '#fecdd3', bg: '#fff1f2', title: '#be123c', desc: '#881337', inner: '#fecdd3' },
+      blue: { border: '#bfdbfe', bg: '#f0f7ff', title: '#1d4ed8', desc: '#1e3a8a', inner: '#bfdbfe' },
+      gold: { border: '#fef08a', bg: '#fefce8', title: '#a16207', desc: '#713f12', inner: '#fef08a' }
+    };
+    const c = configs[theme] || configs.violet;
+
+    const brainstormHtml = `
+<div class="brainstorm-card-wrapper" style="border: 1.5px solid ${c.border} !important; background-color: ${c.bg} !important; background: ${c.bg} !important; border-radius: 20px; padding: 20px; margin: 18px 0; font-family: sans-serif; box-shadow: 0 4px 12px rgba(109, 40, 217, 0.04); text-align: left;">
+  <div style="font-weight: 955; color: ${c.title} !important; text-transform: uppercase; font-size: 13px; letter-spacing: 0.05em; margin-bottom: 6px;">
+    💡 BRAINSTORM & INSIGHT MAP
+  </div>
+  <div style="font-size: 12px; color: ${c.desc} !important; font-weight: 700; margin-bottom: 12px; line-height: 1.5;">
+    Map out your main ideas and key takeaways in a structured brainstorm grid below.
+  </div>
+  <div style="display: grid; grid-template-columns: 1fr; gap: 12px;">
+    <div style="background-color: #ffffff !important; background: #ffffff !important; border: 1.5px solid ${c.inner} !important; border-radius: 12px; padding: 12px; min-height: 50px;">
+      <div style="font-weight: 800; color: ${c.title} !important; font-size: 11px; margin-bottom: 4px; text-transform: uppercase;">Core Concept / Anchor</div>
+      <div style="font-size: 13px; color: #0f172a !important;" class="brainstorm-box">Core study question/theme goes here...</div>
+    </div>
+    <div style="background-color: #ffffff !important; background: #ffffff !important; border: 1.5px solid ${c.inner} !important; border-radius: 12px; padding: 12px; min-height: 50px;">
+      <div style="font-weight: 800; color: ${c.title} !important; font-size: 11px; margin-bottom: 4px; text-transform: uppercase;">Key Insights / Solutions</div>
+      <div style="font-size: 13px; color: #0f172a !important;" class="brainstorm-box">Actions, triggers, or concepts to apply...</div>
+    </div>
+  </div>
+</div>
+<p><br></p>
+`;
+
+    if (editorRef.current) {
+      editorRef.current.focus();
+      if (savedRange.current) {
+        const selection = window.getSelection();
+        selection?.removeAllRanges();
+        selection?.addRange(savedRange.current);
+      } else {
+        const range = document.createRange();
+        range.selectNodeContents(editorRef.current);
+        range.collapse(false);
+        const selection = window.getSelection();
+        selection?.removeAllRanges();
+        selection?.addRange(range);
+      }
+      document.execCommand('insertHTML', false, brainstormHtml);
+      updateTopic(selectedTopic.id, { content: editorRef.current.innerHTML });
+    }
+  };
+
+  const insertProsConsCard = (theme = 'emerald') => {
+    if (!selectedTopic) return;
+    const configs: Record<string, { border: string; bg: string; title: string; desc: string; inner: string }> = {
+      emerald: { border: '#bbf7d0', bg: '#f0fdf4', title: '#047857', desc: '#064e3b', inner: '#86efac' },
+      rose: { border: '#fecdd3', bg: '#fff1f2', title: '#be123c', desc: '#881337', inner: '#fda4af' },
+      blue: { border: '#bfdbfe', bg: '#f0f7ff', title: '#1d4ed8', desc: '#1e3a8a', inner: '#93c5fd' },
+      slate: { border: '#cbd5e1', bg: '#f8fafc', title: '#334155', desc: '#475569', inner: '#cbd5e1' }
+    };
+    const c = configs[theme] || configs.emerald;
+
+    const prosConsHtml = `
+<div class="pros-cons-wrapper" style="border: 1.5px solid ${c.border} !important; background-color: ${c.bg} !important; background: ${c.bg} !important; border-radius: 20px; padding: 20px; margin: 18px 0; font-family: sans-serif; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.04); text-align: left;">
+  <div style="font-weight: 955; color: ${c.title} !important; text-transform: uppercase; font-size: 13px; letter-spacing: 0.05em; margin-bottom: 6px;">
+    ⚖️ PROS & CONS / BEHAVIORAL TRADEOFF
+  </div>
+  <div style="font-size: 12px; color: ${c.desc} !important; font-weight: 700; margin-bottom: 12px; line-height: 1.5;">
+    Analyze the positive gains versus friction points, costs, or cognitive loads of this specific change.
+  </div>
+  <div style="display: grid; grid-template-columns: 1fr; gap: 12px;">
+    <div style="background-color: #fff !important; background: #fff !important; border: 1.5px solid #bbf7d0 !important; border-radius: 12px; padding: 12px; min-height: 60px;">
+      <div style="font-weight: 800; color: #047857 !important; font-size: 11px; margin-bottom: 4px; text-transform: uppercase;">Green Light: Benefits (+)</div>
+      <div style="font-size: 13px; color: #0f172a !important;" class="pros-box">List 2-3 positive impact gains or friction decreases here...</div>
+    </div>
+    <div style="background-color: #fff !important; background: #fff !important; border: 1.5px solid #fecdd3 !important; border-radius: 12px; padding: 12px; min-height: 60px;">
+      <div style="font-weight: 800; color: #be123c !important; font-size: 11px; margin-bottom: 4px; text-transform: uppercase;">Red Flag: Friction / Cost (-)</div>
+      <div style="font-size: 13px; color: #0f172a !important;" class="cons-box">List potential drawbacks, resistance points, or triggers here...</div>
+    </div>
+  </div>
+</div>
+<p><br></p>
+`;
+
+    if (editorRef.current) {
+      editorRef.current.focus();
+      if (savedRange.current) {
+        const selection = window.getSelection();
+        selection?.removeAllRanges();
+        selection?.addRange(savedRange.current);
+      } else {
+        const range = document.createRange();
+        range.selectNodeContents(editorRef.current);
+        range.collapse(false);
+        const selection = window.getSelection();
+        selection?.removeAllRanges();
+        selection?.addRange(range);
+      }
+      document.execCommand('insertHTML', false, prosConsHtml);
       updateTopic(selectedTopic.id, { content: editorRef.current.innerHTML });
     }
   };
@@ -2772,7 +2914,69 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
             }
           }
         }
+      } else {
+        // Check if we are inside a QA Board
+        const qaBoard = activeEl?.closest('.qa-board-wrapper') as HTMLElement | null;
+        if (qaBoard) {
+          e.preventDefault();
+          const gridContainer = qaBoard.querySelector('div[style*="display: grid"]') || qaBoard.querySelector('div[style*="display:grid"]');
+          if (gridContainer) {
+            const lastCard = gridContainer.lastElementChild as HTMLElement | null;
+            if (lastCard) {
+              const newCard = lastCard.cloneNode(true) as HTMLElement;
+              
+              const promptTitleEl = newCard.querySelector('div[style*="font-style: italic"]') as HTMLElement | null;
+              if (promptTitleEl) {
+                promptTitleEl.innerText = 'Define your prompt here...';
+              }
+              const qaBoxEl = newCard.querySelector('.qa-box') as HTMLElement | null;
+              if (qaBoxEl) {
+                qaBoxEl.innerHTML = 'Write your response here...';
+              }
+              gridContainer.appendChild(newCard);
+              
+              setTimeout(() => {
+                if (qaBoxEl) {
+                  const range = document.createRange();
+                  range.selectNodeContents(qaBoxEl);
+                  range.collapse(true);
+                  const sel = window.getSelection();
+                  sel?.removeAllRanges();
+                  sel?.addRange(range);
+                  qaBoxEl.focus();
+                }
+              }, 10);
+              
+              if (editorRef.current && selectedTopic) {
+                updateTopic(selectedTopic.id, { content: editorRef.current.innerHTML });
+              }
+            }
+          }
+        }
       }
+    }
+  };
+
+  const handleEditorPaste = (e: React.ClipboardEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const text = e.clipboardData.getData('text/plain');
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return;
+    
+    const range = sel.getRangeAt(0);
+    range.deleteContents();
+    
+    const textNode = document.createTextNode(text);
+    range.insertNode(textNode);
+    
+    const newRange = document.createRange();
+    newRange.setStartAfter(textNode);
+    newRange.setEndAfter(textNode);
+    sel.removeAllRanges();
+    sel.addRange(newRange);
+    
+    if (editorRef.current && selectedTopic) {
+      updateTopic(selectedTopic.id, { content: editorRef.current.innerHTML });
     }
   };
 
@@ -3471,40 +3675,56 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
               )}
             </div>
 
-            {/* Files / Stars Segmented Tab Control in ONE line right under Search */}
-            <div className="flex bg-slate-100 dark:bg-slate-900/60 p-1 rounded-2xl w-full border border-slate-200/40 dark:border-slate-800/40">
+            {/* Files / Stars / Smart Segmented Tab Control in ONE line right under Search */}
+            <div className="flex bg-slate-100 dark:bg-slate-900/60 p-1 rounded-2xl w-full border border-slate-200/40 dark:border-slate-800/40 gap-0.5">
               <button
                 onClick={() => setSidebarFilter('files')}
-                className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
+                className={`flex-grow flex items-center justify-center gap-1 py-1.5 rounded-xl text-[9px] sm:text-[10px] font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
                   sidebarFilter === 'files'
                     ? 'bg-white dark:bg-slate-800 text-orange-600 dark:text-orange-400 shadow-sm font-black'
-                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-705 dark:hover:text-slate-300'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
                 }`}
+                title="All active files & folders"
               >
-                <Folder size={12} className={sidebarFilter === 'files' ? 'text-orange-500' : 'text-slate-400'} />
+                <Folder size={11} className={sidebarFilter === 'files' ? 'text-orange-500' : 'text-slate-400'} />
                 <span>Files</span>
-                <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-semibold ${sidebarFilter === 'files' ? 'bg-orange-50 dark:bg-orange-900/40 text-orange-700 dark:text-orange-400' : 'bg-slate-200 dark:bg-slate-800/80 text-slate-600'}`}>
+                <span className={`px-1 py-0.5 rounded-full text-[8px] font-semibold scale-90 ${sidebarFilter === 'files' ? 'bg-orange-50 dark:bg-orange-900/40 text-orange-700 dark:text-orange-400' : 'bg-slate-200 dark:bg-slate-800/80 text-slate-600'}`}>
                   {activeTopics.length}
                 </span>
               </button>
+
               <button
                 onClick={() => setSidebarFilter('stars')}
-                className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
+                className={`flex-grow flex items-center justify-center gap-1 py-1.5 rounded-xl text-[9px] sm:text-[10px] font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
                   sidebarFilter === 'stars'
                     ? 'bg-amber-500 dark:bg-amber-600 text-white shadow-sm font-black'
-                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-705 dark:hover:text-slate-300'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
                 }`}
+                title="Favorite / starred topics"
               >
-                <Star size={12} fill={sidebarFilter === 'stars' ? "currentColor" : "none"} className={sidebarFilter === 'stars' ? 'text-white' : 'text-amber-500'} />
+                <Star size={11} fill={sidebarFilter === 'stars' ? "currentColor" : "none"} className={sidebarFilter === 'stars' ? 'text-white' : 'text-amber-500'} />
                 <span>Stars</span>
-                <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-semibold ${sidebarFilter === 'stars' ? 'bg-amber-605 text-white' : 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400'}`}>
+                <span className={`px-1 py-0.5 rounded-full text-[8px] font-semibold scale-90 ${sidebarFilter === 'stars' ? 'bg-amber-600 text-white' : 'bg-amber-100 dark:bg-amber-900/40 text-amber-750 text-amber-700'}`}>
                   {archivedTopics.length}
                 </span>
+              </button>
+
+              <button
+                onClick={() => setSidebarFilter('smart')}
+                className={`flex-grow flex items-center justify-center gap-1 py-1.5 rounded-xl text-[9px] sm:text-[10px] font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
+                  sidebarFilter === 'smart'
+                    ? 'bg-gradient-to-r from-indigo-505 to-purple-650 text-white bg-indigo-600 dark:bg-indigo-650 shadow-sm font-black'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-705 dark:hover:text-slate-305'
+                }`}
+                title="Smart Show: Prioritizes active checklists, attachments, and detailed notes"
+              >
+                <Wand2 size={11} className={sidebarFilter === 'smart' ? 'text-white' : 'text-indigo-550 text-indigo-500'} />
+                <span>Smart</span>
               </button>
             </div>
           </div>
 
-          {/* Active Folder/Stars contents based on current filter selection */}
+          {/* Active Folder/Stars/Smart contents based on current filter selection */}
           {sidebarFilter === 'files' ? (
             <div 
               className={`space-y-1 min-h-[50px] outline-none rounded-xl transition-all ${dragOverTopicId === null && draggedTopicId ? 'ring-2 ring-orange-400/50 bg-orange-50/30' : ''}`}
@@ -3517,6 +3737,19 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
               ) : (
                 <div className="text-center py-6 text-xs text-slate-400 select-none">
                   {searchTerm ? 'No matching note topics found' : 'No active note topics yet'}
+                </div>
+              )}
+            </div>
+          ) : sidebarFilter === 'smart' ? (
+            <div className="space-y-1 min-h-[50px] outline-none rounded-xl transition-all">
+              <div className="text-[9px] font-black text-indigo-500 dark:text-indigo-400/80 uppercase tracking-widest pl-1 mb-2 flex items-center gap-1">
+                <span>✨ Smart Show: Active Task Priorities</span>
+              </div>
+              {filteredSmartTopics.length > 0 ? (
+                filteredSmartTopics.map(t => renderTopic(t))
+              ) : (
+                <div className="text-center py-6 text-xs text-slate-400 select-none">
+                  {searchTerm ? 'No matching smart topics' : 'No active notes block found'}
                 </div>
               )}
             </div>
@@ -3622,6 +3855,13 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
                       className={`flex-1 text-2xl md:text-4xl font-black ${forceLightBg ? 'text-slate-900 border-slate-300' : 'text-slate-100 border-orange-500/20'} bg-transparent outline-none p-2 border-b-2 focus:border-orange-500 transition-all min-w-0`}
                       placeholder="Topic Title..."
                   />
+                  <button
+                    onClick={() => setShowRuler(!showRuler)}
+                    className={`p-2 shrink-0 ${showRuler ? 'bg-orange-100 text-orange-600 hover:bg-orange-200' : 'bg-white/50 text-slate-500 hover:bg-white'} rounded-xl transition-all shadow-sm`}
+                    title={showRuler ? "Hide Document Grid Rails" : "Show Document Grid Rails"}
+                  >
+                    <Ruler size={18} />
+                  </button>
                   <button
                     onClick={() => setIsToolbarHidden(!isToolbarHidden)}
                     className={`p-2 shrink-0 ${isToolbarHidden ? 'bg-orange-100 text-orange-600 hover:bg-orange-200' : 'bg-white/50 text-slate-500 hover:bg-white'} rounded-xl transition-all shadow-sm`}
@@ -3890,9 +4130,9 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
                         <div className="h-6 w-px bg-white/30 mx-1" />
 
                         <div className="flex gap-1 bg-white/40 p-1 rounded-lg shrink-0">
-                          <button className="p-1.5 hover:bg-white rounded transition-colors" title="Align Left" onClick={() => updateTopic(selectedTopic.id, { alignment: 'left' })}><AlignLeft size={16} /></button>
-                          <button className="p-1.5 hover:bg-white rounded transition-colors" title="Align Center" onClick={() => updateTopic(selectedTopic.id, { alignment: 'center' })}><AlignCenter size={16} /></button>
-                          <button className="p-1.5 hover:bg-white rounded transition-colors" title="Align Right" onClick={() => updateTopic(selectedTopic.id, { alignment: 'right' })}><AlignRight size={16} /></button>
+                          <button className="p-1.5 hover:bg-white rounded transition-colors" title="Align Left" onMouseDown={(e) => e.preventDefault()} onClick={(e) => { e.preventDefault(); document.execCommand('justifyLeft'); updateTopic(selectedTopic.id, { content: editorRef.current?.innerHTML || '' }); }}><AlignLeft size={16} /></button>
+                          <button className="p-1.5 hover:bg-white rounded transition-colors" title="Align Center" onMouseDown={(e) => e.preventDefault()} onClick={(e) => { e.preventDefault(); document.execCommand('justifyCenter'); updateTopic(selectedTopic.id, { content: editorRef.current?.innerHTML || '' }); }}><AlignCenter size={16} /></button>
+                          <button className="p-1.5 hover:bg-white rounded transition-colors" title="Align Right" onMouseDown={(e) => e.preventDefault()} onClick={(e) => { e.preventDefault(); document.execCommand('justifyRight'); updateTopic(selectedTopic.id, { content: editorRef.current?.innerHTML || '' }); }}><AlignRight size={16} /></button>
                         </div>
 
                         <div className="h-6 w-px bg-white/30 mx-1" />
@@ -3976,8 +4216,34 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
 
                     <div className="h-6 w-px bg-white/30 mx-1" />
 
-                    {/* Colors toolbar hidden for clean presentation */}
-                    
+                    {/* Lock / Unlock Resizing Column Switch */}
+                    <button
+                      onClick={() => setIsTableResizeLocked(!isTableResizeLocked)}
+                      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-all shrink-0 select-none ${
+                        isTableResizeLocked 
+                          ? 'bg-slate-50 border border-slate-200 text-slate-500 hover:bg-slate-100' 
+                          : 'bg-orange-500 border border-transparent text-white hover:bg-orange-600 shadow-sm'
+                      }`}
+                      title={isTableResizeLocked ? "Table borders are locked to prevent accidental resizing. Click to unlock!" : "Table borders are unlocked. Hover over vertical lines to resize!"}
+                    >
+                      {isTableResizeLocked ? <Lock size={12} className="text-slate-400" /> : <Unlock size={12} className="text-white" />}
+                      <span className="hidden leading-none sm:inline">{isTableResizeLocked ? "Locked" : "Unlocked"}</span>
+                    </button>
+
+                    {/* Ruler Guideline Switch */}
+                    <button
+                      onClick={() => setShowRuler(!showRuler)}
+                      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-all shrink-0 select-none ${
+                        showRuler 
+                          ? 'bg-orange-100 hover:bg-orange-200 border border-orange-200 text-orange-700' 
+                          : 'bg-slate-50 border border-slate-200 text-slate-400 hover:bg-slate-100'
+                      }`}
+                      title={showRuler ? "Guides visible on paper boundaries" : "Alignment guides are hidden. Click to show ruler!"}
+                    >
+                      <Ruler size={12} className={showRuler ? "text-orange-600 animate-pulse" : "text-slate-400"} />
+                      <span className="hidden leading-none sm:inline">Ruler</span>
+                    </button>
+
                     <div className="h-6 w-px bg-white/30 mx-1" />
                     
                     <div className="flex gap-1 bg-blue-500/10 hover:bg-blue-500/20 px-2 py-1 rounded-lg border border-blue-500/30 transition-all">
@@ -4043,7 +4309,22 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
                         </button>
                         
                         {showMoreMenu && (
-                          <div className="absolute right-0 top-full mt-2 z-[250] w-[210px] bg-white rounded-2xl shadow-2xl border border-slate-200 p-4 flex flex-col gap-4 animate-in slide-in-from-top-2 duration-150">
+                          <>
+                            {/* Backdrop overlay only visible on touch/mobile viewports to dismiss */}
+                            <div className="md:hidden fixed inset-0 bg-slate-950/20 backdrop-blur-sm z-[999]" onClick={() => setShowMoreMenu(false)} />
+                            
+                            <div className="fixed md:absolute inset-x-4 bottom-4 md:bottom-auto md:inset-x-auto md:right-0 md:top-full md:mt-2 z-[1000] md:w-[225px] bg-white rounded-2xl shadow-2xl border border-slate-200 p-4 flex flex-col gap-4 animate-in slide-in-from-bottom-5 md:slide-in-from-top-2 duration-150 max-h-[60vh] md:max-h-[350px] overflow-y-auto custom-scrollbar">
+                            <div className="flex items-center justify-between px-2 py-1.5 bg-indigo-50/50 dark:bg-indigo-950/25 rounded-md gap-2 select-none">
+                              <span className="text-[9px] font-black uppercase text-indigo-700 dark:text-indigo-400 tracking-wider flex items-center gap-1">
+                                <Wand2 size={11} className="text-indigo-500 animate-pulse" /> Smart Show
+                              </span>
+                              <input 
+                                type="checkbox"
+                                checked={sidebarFilter === 'smart'}
+                                onChange={(e) => setSidebarFilter(e.target.checked ? 'smart' : 'files')}
+                                className="w-3.5 h-3.5 rounded text-indigo-600 focus:ring-indigo-400 border-slate-300 cursor-pointer"
+                              />
+                            </div>
                             <div>
                               <div className="text-[10px] font-black uppercase text-slate-400 tracking-wider mb-2 flex items-center gap-1.5">
                                 <Layout size={12} className="text-blue-500" />
@@ -4089,10 +4370,10 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
                                   { key: 'amber', color: 'bg-amber-500', border: 'border-amber-200', bg: 'bg-amber-50', name: 'Amber' },
                                   { key: 'purple', color: 'bg-purple-500', border: 'border-purple-200', bg: 'bg-purple-50', name: 'Purple' },
                                   { key: 'rose', color: 'bg-rose-500', border: 'border-rose-200', bg: 'bg-rose-50', name: 'Rose' },
-                                  { key: 'sky', color: 'bg-sky-505', border: 'bg-sky-50', name: 'Sky' },
+                                  { key: 'sky', color: 'bg-sky-500', border: 'border-sky-200', bg: 'bg-sky-50', name: 'Sky' },
                                   { key: 'teal', color: 'bg-teal-500', border: 'border-teal-200', bg: 'bg-teal-50', name: 'Teal' },
                                   { key: 'orange', color: 'bg-orange-500', border: 'border-orange-200', bg: 'bg-orange-50', name: 'Orange' },
-                                  { key: 'cyan', color: 'bg-cyan-505', border: 'bg-cyan-50', name: 'Cyan' }
+                                  { key: 'cyan', color: 'bg-cyan-500', border: 'border-cyan-200', bg: 'bg-cyan-50', name: 'Cyan' }
                                 ].map((theme) => (
                                   <button 
                                     key={theme.key}
@@ -4105,7 +4386,61 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
                                 ))}
                               </div>
                             </div>
+
+                            <div className="h-px bg-slate-100" />
+
+                            <div>
+                              <div className="text-[10px] font-black uppercase text-slate-400 tracking-wider mb-2 flex items-center gap-1.5">
+                                <Zap size={12} className="text-purple-500" />
+                                Insert Brainstorm Map
+                              </div>
+                              <div className="grid grid-cols-5 gap-1.5">
+                                {[
+                                  { key: 'violet', color: 'bg-purple-500', border: 'border-purple-200', bg: 'bg-purple-50', name: 'Violet' },
+                                  { key: 'emerald', color: 'bg-emerald-500', border: 'border-emerald-200', bg: 'bg-emerald-50', name: 'Emerald' },
+                                  { key: 'rose', color: 'bg-rose-500', border: 'border-rose-200', bg: 'bg-rose-50', name: 'Rose' },
+                                  { key: 'blue', color: 'bg-blue-500', border: 'border-blue-200', bg: 'bg-blue-50', name: 'Blue' },
+                                  { key: 'gold', color: 'bg-yellow-500', border: 'border-yellow-200', bg: 'bg-yellow-50', name: 'Gold' }
+                                ].map((theme) => (
+                                  <button 
+                                    key={theme.key}
+                                    onClick={() => { insertBrainstormCard(theme.key); setShowMoreMenu(false); }}
+                                    className={`w-7 h-7 rounded-full border ${theme.border} ${theme.bg} flex items-center justify-center hover:scale-110 active:scale-95 transition-all animate-in zoom-in-50 duration-200`}
+                                    title={`${theme.name} Brainstorm Map`}
+                                  >
+                                    <span className={`w-3 h-3 rounded-full ${theme.color}`} />
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+
+                            <div className="h-px bg-slate-100" />
+
+                            <div>
+                              <div className="text-[10px] font-black uppercase text-slate-400 tracking-wider mb-2 flex items-center gap-1.5">
+                                <Columns size={12} className="text-emerald-500" />
+                                Insert Pros & Cons Grid
+                              </div>
+                              <div className="grid grid-cols-5 gap-1.5">
+                                {[
+                                  { key: 'emerald', color: 'bg-emerald-500', border: 'border-emerald-200', bg: 'bg-emerald-50', name: 'Emerald' },
+                                  { key: 'rose', color: 'bg-rose-500', border: 'border-rose-200', bg: 'bg-rose-50', name: 'Rose' },
+                                  { key: 'blue', color: 'bg-blue-500', border: 'border-blue-200', bg: 'bg-blue-50', name: 'Blue' },
+                                  { key: 'slate', color: 'bg-slate-500', border: 'border-slate-300', bg: 'bg-slate-50', name: 'Slate' }
+                                ].map((theme) => (
+                                  <button 
+                                    key={theme.key}
+                                    onClick={() => { insertProsConsCard(theme.key); setShowMoreMenu(false); }}
+                                    className={`w-7 h-7 rounded-full border ${theme.border} ${theme.bg} flex items-center justify-center hover:scale-110 active:scale-95 transition-all animate-in zoom-in-50 duration-200`}
+                                    title={`${theme.name} Pros & Cons Grid`}
+                                  >
+                                    <span className={`w-3 h-3 rounded-full ${theme.color}`} />
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
                           </div>
+                          </>
                         )}
                       </div>
                       <div className="relative z-[200]">
@@ -4235,7 +4570,22 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
                         </button>
                         
                         {showMoreMenu && (
-                          <div className="absolute right-0 bottom-full mb-2 z-[250] w-[220px] bg-white rounded-2xl shadow-2xl border border-slate-200 p-4 flex flex-col gap-4 animate-in slide-in-from-bottom-2 duration-150">
+                          <>
+                            {/* Backdrop overlay only visible on touch/mobile viewports to dismiss */}
+                            <div className="md:hidden fixed inset-0 bg-slate-950/20 backdrop-blur-sm z-[999]" onClick={() => setShowMoreMenu(false)} />
+                            
+                            <div className="fixed md:absolute inset-x-4 bottom-4 md:bottom-auto md:inset-x-auto md:right-0 md:top-full md:mt-2 z-[1000] md:w-[225px] bg-white rounded-2xl shadow-2xl border border-slate-200 p-4 flex flex-col gap-4 animate-in slide-in-from-bottom-5 md:slide-in-from-top-2 duration-150 max-h-[60vh] md:max-h-[350px] overflow-y-auto custom-scrollbar">
+                            <div className="flex items-center justify-between px-2 py-1.5 bg-indigo-50/50 dark:bg-indigo-950/25 rounded-md gap-2 select-none">
+                              <span className="text-[9px] font-black uppercase text-indigo-700 dark:text-indigo-400 tracking-wider flex items-center gap-1">
+                                <Wand2 size={11} className="text-indigo-500 animate-pulse" /> Smart Show
+                              </span>
+                              <input 
+                                type="checkbox"
+                                checked={sidebarFilter === 'smart'}
+                                onChange={(e) => setSidebarFilter(e.target.checked ? 'smart' : 'files')}
+                                className="w-3.5 h-3.5 rounded text-indigo-600 focus:ring-indigo-400 border-slate-300 cursor-pointer"
+                              />
+                            </div>
                             <div>
                               <div className="text-[10px] font-black uppercase text-indigo-400 tracking-wider mb-2 flex items-center gap-1.5">
                                 <Wand2 size={12} className="text-indigo-500" />
@@ -4314,7 +4664,7 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
                                   { key: 'amber', color: 'bg-amber-500', border: 'border-amber-200', bg: 'bg-amber-50', name: 'Amber' },
                                   { key: 'purple', color: 'bg-purple-500', border: 'border-purple-200', bg: 'bg-purple-50', name: 'Purple' },
                                   { key: 'rose', color: 'bg-rose-500', border: 'border-rose-200', bg: 'bg-rose-50', name: 'Rose' },
-                                  { key: 'sky', color: 'bg-sky-500', border: 'border-sky-55', name: 'Sky' },
+                                  { key: 'sky', color: 'bg-sky-500', border: 'border-sky-200', bg: 'bg-sky-50', name: 'Sky' },
                                   { key: 'teal', color: 'bg-teal-500', border: 'border-teal-200', bg: 'bg-teal-50', name: 'Teal' },
                                   { key: 'orange', color: 'bg-orange-500', border: 'border-orange-200', bg: 'bg-orange-50', name: 'Orange' },
                                   { key: 'cyan', color: 'bg-cyan-500', border: 'border-cyan-200', bg: 'bg-cyan-50', name: 'Cyan' }
@@ -4330,7 +4680,61 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
                                 ))}
                               </div>
                             </div>
+
+                            <div className="h-px bg-slate-100" />
+
+                            <div>
+                              <div className="text-[10px] font-black uppercase text-slate-400 tracking-wider mb-2 flex items-center gap-1.5">
+                                <Zap size={12} className="text-purple-500" />
+                                Insert Brainstorm Map
+                              </div>
+                              <div className="grid grid-cols-5 gap-1.5">
+                                {[
+                                  { key: 'violet', color: 'bg-purple-500', border: 'border-purple-200', bg: 'bg-purple-50', name: 'Violet' },
+                                  { key: 'emerald', color: 'bg-emerald-500', border: 'border-emerald-200', bg: 'bg-emerald-50', name: 'Emerald' },
+                                  { key: 'rose', color: 'bg-rose-500', border: 'border-rose-200', bg: 'bg-rose-50', name: 'Rose' },
+                                  { key: 'blue', color: 'bg-blue-500', border: 'border-blue-200', bg: 'bg-blue-50', name: 'Blue' },
+                                  { key: 'gold', color: 'bg-yellow-500', border: 'border-yellow-200', bg: 'bg-yellow-50', name: 'Gold' }
+                                ].map((theme) => (
+                                  <button 
+                                    key={theme.key}
+                                    onClick={() => { insertBrainstormCard(theme.key); setShowMoreMenu(false); }}
+                                    className={`w-7 h-7 rounded-full border ${theme.border} ${theme.bg} flex items-center justify-center hover:scale-110 active:scale-95 transition-all animate-in zoom-in-50 duration-200`}
+                                    title={`${theme.name} Brainstorm Map`}
+                                  >
+                                    <span className={`w-3 h-3 rounded-full ${theme.color}`} />
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+
+                            <div className="h-px bg-slate-100" />
+
+                            <div>
+                              <div className="text-[10px] font-black uppercase text-slate-400 tracking-wider mb-2 flex items-center gap-1.5">
+                                <Columns size={12} className="text-emerald-500" />
+                                Insert Pros & Cons Grid
+                              </div>
+                              <div className="grid grid-cols-5 gap-1.5">
+                                {[
+                                  { key: 'emerald', color: 'bg-emerald-500', border: 'border-emerald-200', bg: 'bg-emerald-50', name: 'Emerald' },
+                                  { key: 'rose', color: 'bg-rose-500', border: 'border-rose-200', bg: 'bg-rose-50', name: 'Rose' },
+                                  { key: 'blue', color: 'bg-blue-500', border: 'border-blue-200', bg: 'bg-blue-50', name: 'Blue' },
+                                  { key: 'slate', color: 'bg-slate-500', border: 'border-slate-300', bg: 'bg-slate-50', name: 'Slate' }
+                                ].map((theme) => (
+                                  <button 
+                                    key={theme.key}
+                                    onClick={() => { insertProsConsCard(theme.key); setShowMoreMenu(false); }}
+                                    className={`w-7 h-7 rounded-full border ${theme.border} ${theme.bg} flex items-center justify-center hover:scale-110 active:scale-95 transition-all animate-in zoom-in-50 duration-200`}
+                                    title={`${theme.name} Pros & Cons Grid`}
+                                  >
+                                    <span className={`w-3 h-3 rounded-full ${theme.color}`} />
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
                           </div>
+                          </>
                         )}
                       </div>
 
@@ -4532,6 +4936,30 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
                         box-shadow: inset 0 0 6px rgba(0,0,0,0.3);
                       }
 
+                      .editor-scrollbar {
+                        overflow-y: scroll !important;
+                        -webkit-overflow-scrolling: touch !important;
+                      }
+                      .editor-scrollbar::-webkit-scrollbar {
+                        -webkit-appearance: none !important;
+                        width: 8px !important;
+                        display: block !important;
+                      }
+                      .editor-scrollbar::-webkit-scrollbar-track {
+                        background: rgba(249, 115, 22, 0.05) !important;
+                        border-radius: 8px !important;
+                        margin-top: 24px;
+                        margin-bottom: 24px;
+                      }
+                      .editor-scrollbar::-webkit-scrollbar-thumb {
+                        background: rgba(249, 115, 22, 0.4) !important;
+                        border-radius: 8px !important;
+                        min-height: 40px !important;
+                      }
+                      .editor-scrollbar::-webkit-scrollbar-thumb:hover {
+                        background: rgba(249, 115, 22, 0.7) !important;
+                      }
+
                       .editor-content {
                         color: ${editorTextColor};
                       }
@@ -4712,31 +5140,75 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
                   );
                 })()}
 
-                <div 
-                    ref={editorRef}
-                    contentEditable={true}
-                    onClick={handleEditorClick}
-                    onMouseUp={handleSelection}
-                    onKeyUp={handleSelection}
-                    onKeyDown={handleEditorKeyDown}
-                    onMouseMove={handleEditorMouseMove}
-                    onMouseDown={handleEditorMouseDown}
-                    onTouchStart={handleEditorTouchStart}
-                    onBlur={(e) => {
-                      updateTopic(selectedTopic.id, { content: e.currentTarget.innerHTML });
-                    }}
-                    style={{ 
-                      textAlign: selectedTopic.alignment, 
-                      minHeight: '300px',
-                      fontSize: `${textFontSize}px`,
-                      fontFamily: textFontFamily
-                    }}
-                    className={`editor-content w-full flex-1 outline-none p-8 rounded-3xl leading-relaxed font-medium transition-all focus:ring-4 focus:ring-orange-500/10 overflow-y-auto shadow-md ${
-                      forceLightBg
-                        ? 'bg-[#fcfdfd] border border-slate-200 text-slate-800 shadow-2xl'
-                        : selectedPaper.className
-                    }`}
-                ></div>
+                {/* Relative Wrapper for Editor + Ruler Guides */}
+                <div className="relative flex flex-col w-full flex-1 min-h-0">
+                  
+                  {/* Modern Word-style Horizontal Page Ruler */}
+                  {showRuler && (
+                    <div className="w-full bg-slate-50 border border-slate-200/80 rounded-2xl p-2 mb-3 select-none font-mono text-[9px] text-slate-400 flex flex-col gap-1.5 shadow-inner animate-in fade-in slide-in-from-top-1 duration-200 shrink-0">
+                      <div className="relative h-6 flex items-end">
+                        {/* 0 to 100% Horizontal Ticks */}
+                        <div className="absolute inset-0 flex justify-between px-6">
+                          {Array.from({ length: 21 }).map((_, i) => {
+                            const percent = i * 5;
+                            const isMajor = i % 5 === 0;
+                            return (
+                              <div key={i} className="flex flex-col items-center flex-1 relative h-full">
+                                <div className={`w-px bg-slate-300 ${isMajor ? 'h-3.5 bg-slate-400' : 'h-1.5'}`} />
+                                {isMajor && (
+                                  <span className="absolute bottom-0 text-[8px] font-black tracking-tighter text-slate-450">
+                                    {i === 0 ? "L" : i === 20 ? "R" : `${i * 5}`}
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                        
+                        {/* Left/Right Safe Page Margin Guidelines sliders like in Google Docs */}
+                        <div className="absolute left-[5%] bottom-[2px] w-2.5 h-2.5 bg-orange-500 rounded-b-sm border-t border-orange-300 shadow-sm cursor-help transition-all" title="Left Page Margin Guide (Alignment Rail)" />
+                        <div className="absolute right-[5%] bottom-[2px] w-2.5 h-2.5 bg-orange-500 rounded-b-sm border-t border-orange-300 shadow-sm cursor-help transition-all" title="Right Page Margin Guide (Alignment Rail)" />
+                      </div>
+                      <div className="text-[8px] font-black tracking-widest text-slate-400 uppercase text-center leading-none">
+                        Document Grid Guideline Rails Enabled
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Vertical Guideline Rails Overlay indicating page boundaries */}
+                  {showRuler && (
+                    <>
+                      <div className="absolute top-12 bottom-0 left-[32px] w-px border-l-2 border-dashed border-orange-500/20 pointer-events-none z-10" title="Left Align Guide" />
+                      <div className="absolute top-12 bottom-0 right-[32px] w-px border-r-2 border-dashed border-orange-500/20 pointer-events-none z-10" title="Right Align Guide" />
+                    </>
+                  )}
+
+                  <div 
+                      ref={editorRef}
+                      contentEditable={true}
+                      onClick={handleEditorClick}
+                      onPaste={handleEditorPaste}
+                      onMouseUp={handleSelection}
+                      onKeyUp={handleSelection}
+                      onKeyDown={handleEditorKeyDown}
+                      onMouseMove={handleEditorMouseMove}
+                      onMouseDown={handleEditorMouseDown}
+                      onTouchStart={handleEditorTouchStart}
+                      onBlur={(e) => {
+                        updateTopic(selectedTopic.id, { content: e.currentTarget.innerHTML });
+                      }}
+                      style={{ 
+                        minHeight: '300px',
+                        fontSize: `${textFontSize}px`,
+                        fontFamily: textFontFamily
+                      }}
+                      className={`editor-content editor-scrollbar w-full flex-1 outline-none p-8 rounded-3xl leading-relaxed font-medium transition-all focus:ring-4 focus:ring-orange-500/10 shadow-md ${
+                        forceLightBg
+                          ? 'bg-[#fcfdfd] border border-slate-200 text-slate-800 shadow-2xl'
+                          : selectedPaper.className
+                      }`}
+                  ></div>
+                </div>
 
                 {isTableModalOpen && (
                   <div className="fixed inset-0 z-[202] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">

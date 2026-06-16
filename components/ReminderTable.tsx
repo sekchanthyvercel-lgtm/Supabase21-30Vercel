@@ -155,6 +155,15 @@ const ReminderTable: React.FC<ReminderTableProps> = ({
       return iso;
   };
 
+  const formatShortDate = (str: string): string => {
+      if (!str) return '';
+      const parsed = parseStoredDate(str);
+      if (parsed) {
+        return format(parsed, 'MMM d, yyyy');
+      }
+      return str;
+  };
+
   const displayToIso = (display: string) => {
       if (!display) return '';
       const parsed = parseStoredDate(display);
@@ -208,14 +217,16 @@ const ReminderTable: React.FC<ReminderTableProps> = ({
 
   const getRowBg = (idx: number) => {
     const colors = [
-      'bg-emerald-400/5',
-      'bg-emerald-400/5',
-      'bg-amber-400/5',
-      'bg-indigo-400/5',
-      'bg-rose-400/5',
-      'bg-violet-400/5',
-      'bg-teal-400/5',
-      'bg-orange-400/5'
+      'bg-indigo-50/70',
+      'bg-rose-50/70',
+      'bg-sky-50/70',
+      'bg-emerald-50/70',
+      'bg-amber-50/70',
+      'bg-purple-50/70',
+      'bg-orange-50/70',
+      'bg-teal-50/70',
+      'bg-fuchsia-50/70',
+      'bg-lime-50/70'
     ];
     return colors[idx % colors.length];
   };
@@ -250,10 +261,10 @@ const ReminderTable: React.FC<ReminderTableProps> = ({
   ];
 
   return (
-    <div className="flex-1 flex flex-col bg-transparent overflow-hidden p-4 md:p-6 lg:p-8 text-slate-900">
+    <div className="flex-1 flex flex-col bg-transparent overflow-hidden p-4 md:p-6 lg:p-8 text-slate-900 relative">
       {/* Header Bar */}
-      <div className="bg-white/[0.01] backdrop-blur-3xl rounded-[32px] p-6 mb-6 flex flex-wrap items-center justify-between shadow-sm border border-white/10 gap-4 transition-all">
-        <div className="flex items-center gap-4">
+      <div className="bg-white/[0.01] backdrop-blur-3xl rounded-[32px] p-6 mb-6 flex flex-col lg:flex-row lg:items-center justify-between shadow-sm border border-white/10 gap-4 transition-all overflow-hidden max-w-full">
+        <div className="flex items-center gap-4 shrink-0">
           <div className="w-12 h-12 bg-orange-500 rounded-2xl flex items-center justify-center text-white shadow-xl shadow-orange-500/30">
             <Bell size={24} strokeWidth={3} />
           </div>
@@ -263,70 +274,73 @@ const ReminderTable: React.FC<ReminderTableProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="flex bg-white/50 border border-slate-100 rounded-xl p-1 relative z-50">
-            {(['All', 'Active', 'Completed', 'Archived'] as const).map(mode => (
+        {/* Scrollable Container on Mobile, Normal Inline on Desktop */}
+        <div className="overflow-x-auto w-full lg:w-auto pb-2 lg:pb-0 flex items-center lg:justify-end custom-scrollbar relative z-50">
+          <div className="flex items-center gap-3 shrink-0 min-w-max pr-4">
+            <div className="flex bg-white/50 border border-slate-100 rounded-xl p-1 relative z-50">
+              {(['All', 'Active', 'Completed', 'Archived'] as const).map(mode => (
+                <button 
+                  key={mode}
+                  onClick={() => setViewMode(mode)}
+                  className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === mode ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' : 'text-slate-405 hover:text-slate-900'}`}
+                >
+                  {mode}
+                </button>
+              ))}
+            </div>
+
+            <div className="relative w-64">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input 
+                type="text" 
+                placeholder="Search reminders..." 
+                className="w-full h-10 pl-10 pr-4 bg-white/50 border border-slate-100 rounded-xl text-[11px] font-bold text-slate-700 outline-none focus:ring-4 focus:ring-orange-500/10 transition-all"
+                value={filters.searchQuery}
+                onChange={e => setFilters({...filters, searchQuery: e.target.value})}
+              />
+            </div>
+
+            {activeReminders.some(r => r.status === 'Completed') && (
               <button 
-                key={mode}
-                onClick={() => setViewMode(mode)}
-                className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === mode ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' : 'text-slate-400 hover:text-slate-900'}`}
+                onClick={() => {
+                  activeReminders.forEach(r => {
+                    if (r.status === 'Completed') {
+                      onUpdateStudent(r.id, { isArchived: true });
+                    }
+                  });
+                }}
+                className="flex items-center gap-2 h-10 px-4 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-amber-500/20 transition-all active:scale-95"
+                title="Archive Completed Reminders"
               >
-                {mode}
+                <Archive size={14} /> Archive Completed ({activeReminders.filter(r => r.status === 'Completed').length})
               </button>
-            ))}
-          </div>
+            )}
 
-          <div className="relative w-64">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input 
-              type="text" 
-              placeholder="Search reminders..." 
-              className="w-full h-10 pl-10 pr-4 bg-white/50 border border-slate-100 rounded-xl text-[11px] font-bold text-slate-700 outline-none focus:ring-4 focus:ring-orange-500/10 transition-all"
-              value={filters.searchQuery}
-              onChange={e => setFilters({...filters, searchQuery: e.target.value})}
-            />
-          </div>
-
-          {activeReminders.some(r => r.status === 'Completed') && (
             <button 
-              onClick={() => {
-                activeReminders.forEach(r => {
-                  if (r.status === 'Completed') {
-                    onUpdateStudent(r.id, { isArchived: true });
-                  }
-                });
-              }}
-              className="flex items-center gap-2 h-10 px-4 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-amber-500/20 transition-all active:scale-95"
-              title="Archive Completed Reminders"
+              onClick={() => onAddStudent({ category: 'Reminder' })}
+              className="flex items-center gap-2 h-10 px-5 bg-orange-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-orange-500/20 hover:bg-orange-600 transition-all active:scale-95"
             >
-              <Archive size={14} /> Archive Completed ({activeReminders.filter(r => r.status === 'Completed').length})
+              <Plus size={16} strokeWidth={3} /> New Reminder
             </button>
-          )}
 
-          <button 
-            onClick={() => onAddStudent({ category: 'Reminder' })}
-            className="flex items-center gap-2 h-10 px-5 bg-orange-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-orange-500/20 hover:bg-orange-600 transition-all active:scale-95"
-          >
-            <Plus size={16} strokeWidth={3} /> New Reminder
-          </button>
-
-          <button 
-            onClick={() => setFilters({ ...filters, showHidden: !filters.showHidden })}
-            className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all shadow-sm ${filters.showHidden ? 'bg-indigo-600 text-white' : 'bg-white text-slate-400 border border-slate-100 hover:bg-slate-50'}`}
-            title={filters.showHidden ? "Hide Hidden Tasks" : "Show Hidden Tasks"}
-          >
-            {filters.showHidden ? <Eye size={18} /> : <EyeOff size={18} />}
-          </button>
-          
-          {role === 'Admin' && (
             <button 
-              onClick={() => onClearCategory(['Reminder'])}
-              className="w-10 h-10 bg-orange-50 text-orange-500 border border-orange-100 rounded-xl flex items-center justify-center hover:bg-orange-500 hover:text-white transition-all shadow-sm"
-              title="Clear All Reminders"
+              onClick={() => setFilters({ ...filters, showHidden: !filters.showHidden })}
+              className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all shadow-sm ${filters.showHidden ? 'bg-indigo-600 text-white' : 'bg-white text-slate-400 border border-slate-100 hover:bg-slate-50'}`}
+              title={filters.showHidden ? "Hide Hidden Tasks" : "Show Hidden Tasks"}
             >
-              <Trash2 size={18} />
+              {filters.showHidden ? <Eye size={18} /> : <EyeOff size={18} />}
             </button>
-          )}
+            
+            {role === 'Admin' && (
+              <button 
+                onClick={() => onClearCategory(['Reminder'])}
+                className="w-10 h-10 bg-orange-50 text-orange-500 border border-orange-100 rounded-xl flex items-center justify-center hover:bg-orange-500 hover:text-white transition-all shadow-sm"
+                title="Clear All Reminders"
+              >
+                <Trash2 size={18} />
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -408,117 +422,23 @@ const ReminderTable: React.FC<ReminderTableProps> = ({
                         placeholder="Enter task name..."
                         style={{ 
                           fontFamily: settings?.fontFamily || "Inter, sans-serif",
-                          fontSize: `${settings?.fontSize || 12}px`
+                          fontSize: `${Math.max(14, settings?.fontSize || 15)}px`
                         }}
                         className="flex-1 bg-transparent font-black text-slate-900 outline-none placeholder:text-slate-500"
                       />
-                      <button 
-                        onClick={() => {
-                          const html = `<ul style="list-style-type: none; padding-left: 0; margin-top: 4px; margin-bottom: 4px;"><li style="display: flex; gap: 8px; align-items: flex-start;"><span contenteditable="false" class="task-checkbox" style="cursor: pointer; user-select: none;">⬜</span><span>&nbsp;</span></li></ul><div><br></div>`;
-                          updateField(s.id, 'name', (s.name || '') + html);
-                        }}
-                        className="opacity-0 group-hover/cell:opacity-100 text-slate-400 hover:text-emerald-600 transition-all shrink-0 p-1 rounded hover:bg-slate-100"
-                        title="Add Checklist Item to this specific task"
-                      >
-                        <CheckSquare size={14} />
-                      </button>
                     </div>
-
-                    {/* Integrated subtask management */}
-                    {(() => {
-                      const subtasks = s.subtasks || [];
-                      const completedSubCount = subtasks.filter((sub: any) => sub.isCompleted).length;
-                      const hasSubtasks = subtasks.length > 0;
-                      return (
-                        <div className="mt-2 text-left">
-                          {hasSubtasks && (
-                            <div className="flex items-center gap-1.5 mb-1.5 max-w-[200px]">
-                              <div className="flex-1 h-1 bg-slate-200/60 rounded-full overflow-hidden">
-                                <div 
-                                  className="h-full bg-orange-500 transition-all duration-300" 
-                                  style={{ width: `${(completedSubCount / subtasks.length) * 100}%` }}
-                                />
-                              </div>
-                              <span className="text-[9px] font-black tracking-widest text-slate-400 select-none shrink-0">
-                                {completedSubCount}/{subtasks.length} subtasks
-                              </span>
-                            </div>
-                          )}
-
-                          {hasSubtasks && (
-                            <div className="flex flex-col gap-1.5 pl-2 border-l-2 border-slate-100/80 mb-2">
-                              {subtasks.map((sub: any, subIdx: number) => (
-                                <div key={sub.id || subIdx} className="flex items-center gap-2 group/sub">
-                                  <input 
-                                    type="checkbox"
-                                    checked={!!sub.isCompleted}
-                                    onChange={(e) => {
-                                      const updated = [...subtasks];
-                                      updated[subIdx] = { ...sub, isCompleted: e.target.checked };
-                                      updateField(s.id, 'subtasks', updated);
-                                    }}
-                                    className="w-3.5 h-3.5 rounded border-slate-300 text-orange-500 focus:ring-orange-500/20 cursor-pointer"
-                                  />
-                                  <input 
-                                    type="text"
-                                    value={sub.text || ''}
-                                    onChange={(e) => {
-                                      const updated = [...subtasks];
-                                      updated[subIdx] = { ...sub, text: e.target.value };
-                                      updateField(s.id, 'subtasks', updated);
-                                    }}
-                                    className={`flex-1 text-[11px] font-bold bg-transparent outline-none text-slate-700 focus:text-slate-900 focus:border-b focus:border-indigo-400 ${sub.isCompleted ? 'line-through text-slate-400' : ''}`}
-                                  />
-                                  <button 
-                                    onClick={() => {
-                                      const updated = subtasks.filter((_: any, idx: number) => idx !== subIdx);
-                                      updateField(s.id, 'subtasks', updated);
-                                    }}
-                                    className="opacity-0 group-hover/sub:opacity-100 text-slate-300 hover:text-red-500 transition-all p-0.5"
-                                    title="Delete subtask"
-                                  >
-                                    <X size={10} />
-                                  </button>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-
-                          <div className="flex items-center gap-2 max-w-[250px]">
-                            <Plus size={10} className="text-slate-400 shrink-0" />
-                            <input 
-                              type="text" 
-                              placeholder="Add subtask..."
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                  e.preventDefault();
-                                  const text = e.currentTarget.value.trim();
-                                  if (text) {
-                                    const newSub = { id: Math.random().toString(36).substr(2, 9), text, isCompleted: false };
-                                    updateField(s.id, 'subtasks', [...subtasks, newSub]);
-                                    e.currentTarget.value = '';
-                                  }
-                                }
-                              }}
-                              className="w-full text-[10px] font-bold text-slate-400 focus:text-slate-400 bg-transparent outline-none border-b border-dashed border-slate-200 focus:border-orange-500"
-                            />
-                          </div>
-                        </div>
-                      );
-                    })()}
                   </td>
                   <td className="px-4">
-                    <div className="flex items-center justify-center gap-2 px-3 py-1.5 bg-white/30 rounded-lg border border-white/20">
-                        <Calendar size={12} className="text-orange-400 hover:scale-110 transition-transform cursor-pointer" />
+                    <div className="relative flex items-center justify-center gap-1.5 px-3 py-1.5 bg-white/40 rounded-xl border border-slate-100 hover:border-orange-300 transition-all select-none cursor-pointer">
+                        <Calendar size={12} className="text-orange-500 shrink-0" />
+                        <span className="text-[11px] font-black text-slate-700 capitalize shrink-0">
+                          {s.deadline ? formatShortDate(s.deadline) : 'No Date'}
+                        </span>
                         <input 
                           type="date"
                           value={displayToIso(s.deadline || '')} 
                           onChange={e => updateField(s.id, 'deadline', isoToDisplay(e.target.value))}
-                          style={{ 
-                            fontFamily: settings?.fontFamily || "Inter, sans-serif",
-                            fontSize: `${settings?.fontSize || 10}px`
-                          }}
-                          className="w-full bg-transparent font-black text-slate-600 outline-none text-center cursor-pointer"
+                          className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
                         />
                     </div>
                   </td>
@@ -576,7 +496,7 @@ const ReminderTable: React.FC<ReminderTableProps> = ({
                       placeholder="Add details..."
                       style={{ 
                         fontFamily: settings?.fontFamily || "Inter, sans-serif",
-                        fontSize: `${Math.max(10, (settings?.fontSize || 11) - 1)}px`
+                        fontSize: `${Math.max(13, (settings?.fontSize || 14) - 1)}px`
                       }}
                       className="w-full bg-transparent font-bold text-slate-500 outline-none placeholder:text-slate-200"
                     />
@@ -702,6 +622,16 @@ const ReminderTable: React.FC<ReminderTableProps> = ({
           </div>
         )}
       </div>
+
+      {/* Mobile Floating Action Button (FAB) to instantly add new reminders */}
+      <button 
+        onClick={() => onAddStudent({ category: 'Reminder' })}
+        className="lg:hidden fixed bottom-6 right-6 z-[9999] w-14 h-14 bg-orange-500 hover:bg-orange-600 active:scale-95 text-white rounded-full flex items-center justify-center shadow-2xl shadow-orange-500/40 border border-white/20 transition-all cursor-pointer"
+        title="Quick Add Reminder"
+        id="quick-add-reminder-fab"
+      >
+        <Plus size={24} strokeWidth={3} />
+      </button>
     </div>
   );
 };
