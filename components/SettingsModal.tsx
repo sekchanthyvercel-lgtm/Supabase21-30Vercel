@@ -674,9 +674,6 @@ export const SettingsModal: React.FC<Props> = ({ isOpen, onClose, settings, onUp
           if (onImportData) {
             onImportData(parsed);
             setImportSuccess("Backup imported successfully! Applying changes...");
-            setTimeout(() => {
-              window.location.reload();
-            }, 1500);
           }
         } catch (err: any) {
           console.error(err);
