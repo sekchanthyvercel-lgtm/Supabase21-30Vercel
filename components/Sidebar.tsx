@@ -17,6 +17,7 @@ import {
   Zap,
   ClipboardList,
   Bell,
+  CheckSquare,
   Image as ImageIcon,
   Trash2,
   FileText,
@@ -109,15 +110,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
   };
 
   const navItems = [
-    { id: Tab.HabitTracker, icon: Zap, label: 'Habit Tracker', roles: ['Admin', 'Teacher', 'Finance'] },
-    { id: Tab.AdvancedHabitTracker, icon: Sparkles, label: 'Advanced Habits', roles: ['Admin', 'Teacher', 'Finance'] },
-    { id: Tab.Reflections, icon: LayoutGrid, label: 'Growth Plan', roles: ['Admin', 'Teacher', 'Finance'] },
-    { id: Tab.DailyJournal, icon: BookOpen, label: 'Daily Journal', roles: ['Admin', 'Teacher', 'Finance'] },
-    { id: Tab.Reminder, icon: Bell, label: 'Reminder Hub', roles: ['Admin', 'Teacher', 'Finance'] },
+    { id: Tab.DailyPerformanceCheck, icon: CheckSquare, label: 'Daily Performance', roles: ['Admin', 'Teacher', 'Finance'] },
     { id: Tab.DPSS, icon: FileText, label: 'Note-taking', roles: ['Admin', 'Teacher', 'Finance'] },
     { id: Tab.SelfLearning, icon: GraduationCap, label: 'Self-Learning', roles: ['Admin', 'Teacher', 'Finance'] },
     { id: Tab.ExpenseTracker, icon: Wallet, label: 'Daily Expenses', roles: ['Admin', 'Teacher', 'Finance'] },
+    { id: Tab.Reflections, icon: LayoutGrid, label: 'Growth Plan', roles: ['Admin', 'Teacher', 'Finance'] },
+    { id: Tab.DailyJournal, icon: BookOpen, label: 'Daily Journal', roles: ['Admin', 'Teacher', 'Finance'] },
+    { id: Tab.Reminder, icon: Bell, label: 'Reminder Hub', roles: ['Admin', 'Teacher', 'Finance'] },
     { id: Tab.Analytics, icon: BarChart3, label: 'Analytics', roles: ['Admin', 'Teacher', 'Finance'] },
+    { id: Tab.AdvancedHabitTracker, icon: Sparkles, label: 'Advanced Habits', roles: ['Admin', 'Teacher', 'Finance'] },
     { id: Tab.RecycleBin, icon: Trash2, label: 'Recycle Bin', roles: ['Admin', 'Teacher'] },
     { id: Tab.Maintenance, icon: ShieldCheck, label: 'Maintenance & Sync', roles: ['Admin'] },
   ];

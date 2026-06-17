@@ -410,22 +410,22 @@ export const ExpenseTracker: React.FC<ExpenseTrackerProps> = ({ data, onUpdate, 
     return <Tag size={15} className="text-slate-400" />;
   };
 
-  // Dynamic suggestions of amounts & full entries based on previous day or previous 2-3 days
+  // Dynamic suggestions of amounts & full entries based on previous 5 days (including today)
   const previousDaysSuggestions = useMemo(() => {
     const now = new Date();
     const startOfToday = startOfDay(now);
 
-    // Look at records from 1 to 4 days ago to capture yesterday and previous 3 days
-    const fourDaysAgo = startOfDay(new Date(now.getTime() - 4 * 24 * 60 * 60 * 1000));
-    const endOfYesterday = endOfDay(new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000));
+    // Look at records from last 5 days to capture everything
+    const fiveDaysAgo = startOfDay(new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000));
+    const endOfToday = endOfDay(now);
 
     let recent = expenses.filter(e => {
       if (!e || !e.date || !isValidDate(e.date)) return false;
       const eDate = new Date(e.date);
-      return eDate >= fourDaysAgo && eDate <= endOfYesterday;
+      return eDate >= fiveDaysAgo && eDate <= endOfToday;
     });
 
-    // Fallback: if no records in the past 4 days, take up to 20 recent historical records (excluding today)
+    // Fallback: if no records in the past 5 days, take up to 20 recent historical records (excluding today)
     if (recent.length === 0) {
       recent = expenses.filter(e => {
         if (!e || !e.date || !isValidDate(e.date)) return false;
@@ -461,12 +461,12 @@ export const ExpenseTracker: React.FC<ExpenseTrackerProps> = ({ data, onUpdate, 
       .slice(0, 6)
       .map(entry => ({ amount: entry.amount, currency: entry.currency }));
 
-    // 2. Get unique full entry suggestions for Smart Add (e.g., "Rice 10000R" or "Latte 3.2$")
+    // 2. Get unique full entry suggestions for Smart Add (e.g., "Rice 3000R" or "Coffee 1$")
     const entriesMap = new Map<string, { label: string; text: string; count: number }>();
     recent.forEach(e => {
       if (e && e.type === 'Expense' && e.description && typeof e.description === 'string' && e.description.trim()) {
         const amtSuffix = e.currency === 'KHR' ? `${e.amount}R` : `${e.amount}$`;
-        const label = `${e.description} ${amtSuffix}`;
+        const label = `${e.description} (${e.category}) - ${amtSuffix}`;
         const text = `${e.description} ${amtSuffix}`;
         const key = label.toLowerCase().trim();
         const existing = entriesMap.get(key);
@@ -480,10 +480,51 @@ export const ExpenseTracker: React.FC<ExpenseTrackerProps> = ({ data, onUpdate, 
 
     const entries = Array.from(entriesMap.values())
       .sort((a, b) => b.count - a.count)
-      .slice(0, 5)
+      .slice(0, 15) // Suggest all from last 5 days
       .map(e => ({ label: e.label, text: e.text }));
 
     return { amounts, entries };
+  }, [expenses]);
+
+  // Unique full-featured expense templates representing everything spent over the past 5 days
+  const lastFiveDaysExpenses = useMemo(() => {
+    const now = new Date();
+    const fiveDaysAgo = startOfDay(new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000));
+    const endOfToday = endOfDay(now);
+
+    let recentVal = expenses.filter(e => {
+      if (!e || !e.date || !isValidDate(e.date)) return false;
+      if (e.type !== 'Expense') return false; // suggest expense records
+      const eDate = new Date(e.date);
+      return eDate >= fiveDaysAgo && eDate <= endOfToday;
+    });
+
+    // Fallback: if no records in the past 5 days, take the last 15 historical items
+    if (recentVal.length === 0) {
+      recentVal = expenses.filter(e => e && e.type === 'Expense').slice(0, 15);
+    }
+
+    const seenKeys = new Set<string>();
+    const uniqueTemplateList: ExpenseEntry[] = [];
+
+    // Sort newest transactions to show first
+    const sorted = [...recentVal].sort((a, b) => {
+      const dbA = a.date ? new Date(a.date).getTime() : 0;
+      const dbB = b.date ? new Date(b.date).getTime() : 0;
+      return dbB - dbA;
+    });
+
+    sorted.forEach(e => {
+      if (e && e.description && typeof e.description === 'string' && e.description.trim()) {
+        const key = `${e.description.toLowerCase().trim()}-${e.amount}-${e.currency || 'USD'}-${e.category}`;
+        if (!seenKeys.has(key)) {
+          seenKeys.add(key);
+          uniqueTemplateList.push(e);
+        }
+      }
+    });
+
+    return uniqueTemplateList;
   }, [expenses]);
 
   const [smartInput, setSmartInput] = useState('');
@@ -2184,6 +2225,41 @@ export const ExpenseTracker: React.FC<ExpenseTrackerProps> = ({ data, onUpdate, 
                                   Income
                               </button>
                           </div>
+
+                          {/* 1-Click Auto-fill Recommendations for Last 5 Days */}
+                          {newExpense.type === 'Expense' && lastFiveDaysExpenses.length > 0 && (
+                            <div className="space-y-2 p-4 bg-amber-500/[0.04] border border-amber-500/10 rounded-[28px]">
+                              <span className="text-[10px] font-black text-amber-750 uppercase tracking-widest flex items-center gap-1 ml-1.5">
+                                🚀 Click to Autofill (Last 5 Days):
+                              </span>
+                              <div className="flex flex-wrap gap-2 max-h-36 overflow-y-auto pr-1 select-none custom-scrollbar-amber">
+                                {lastFiveDaysExpenses.map((exp, idx) => (
+                                  <button
+                                    key={idx}
+                                    type="button"
+                                    onClick={() => {
+                                      setNewExpense({
+                                        description: exp.description,
+                                        amount: exp.amount.toString(),
+                                        category: exp.category,
+                                        type: exp.type || 'Expense',
+                                        currency: (exp.currency || 'USD') as 'USD' | 'KHR'
+                                      });
+                                      setSuggestedCategory(exp.category);
+                                    }}
+                                    className="flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-amber-50 border border-slate-200/80 hover:border-amber-300 rounded-[14px] text-xs font-black text-slate-750 hover:text-amber-950 transition-all shadow-sm active:scale-95 text-left"
+                                  >
+                                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500 flex-shrink-0" />
+                                    <span className="truncate max-w-[120px]">{exp.description}</span>
+                                    <span className="text-[9px] text-slate-400 font-bold flex-shrink-0">({exp.category})</span>
+                                    <span className="text-[9px] text-amber-600 bg-amber-500/5 px-1.5 py-0.5 rounded-full font-black flex-shrink-0 ml-auto">
+                                      {exp.currency === 'KHR' ? `${exp.amount.toLocaleString()}R` : `$${exp.amount}`}
+                                    </span>
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
 
                           <div className="space-y-2">
                              <label className="text-[10px] font-black uppercase tracking-widest text-slate-900/40 ml-4">Description</label>

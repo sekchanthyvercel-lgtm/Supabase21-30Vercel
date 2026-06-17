@@ -2957,16 +2957,140 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
     }
   };
 
+  const parseMarkdownTableToHtml = (text: string): string | null => {
+    const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    if (lines.length < 2) return null;
+    
+    // A Markdown table must contain '|' and at least one line with dashes/separators or multiple pipe lines
+    const isTable = lines.some(l => l.includes('|-') || l.includes('-|') || l.match(/\|?\s*:\s*-+\s*:\s*\|/));
+    const hasPipe = lines[0].includes('|');
+    if (!isTable && !hasPipe) return null;
+
+    let html = `<div class="table-scroll-container" style="overflow-x: auto; max-width: 100%; -webkit-overflow-scrolling: touch; border-radius: 12px; margin: 8px 0 16px 0; border: 1px solid rgba(249, 115, 22, 0.4);">`;
+    html += `<table style="width: 100%; border-collapse: collapse; border: 2.5px solid rgba(249, 115, 22, 0.4) !important; font-size: 14px; border-radius: 12px; overflow: hidden; display: table;">`;
+
+    let inHeader = true;
+    let headers: string[] = [];
+    const rows: string[][] = [];
+
+    for (const line of lines) {
+      if (line.match(/\|?\s*[:\-]+\s*\|\s*[:\-]+/)) {
+        inHeader = false;
+        continue;
+      }
+      const cells = line.split('|').map(c => c.trim());
+      if (cells[0] === '') cells.shift();
+      if (cells[cells.length - 1] === '') cells.pop();
+
+      if (cells.length === 0) continue;
+
+      if (inHeader && headers.length === 0) {
+        headers = cells;
+      } else {
+        rows.push(cells);
+      }
+    }
+
+    if (headers.length === 0 && rows.length > 0) {
+      const first = rows.shift();
+      if (first) headers = first;
+    }
+
+    if (headers.length > 0) {
+      html += `<thead><tr style="background-color: #f97316; color: white;">`;
+      for (const h of headers) {
+        html += `<th style="padding: 12px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; border: 2.5px solid rgba(249, 115, 22, 0.4) !important;">${h}</th>`;
+      }
+      html += `</tr></thead>`;
+    }
+
+    html += '<tbody>';
+    for (const row of rows) {
+      html += '<tr>';
+      for (let i = 0; i < headers.length; i++) {
+        // If row has fewer elements, pad with empty string
+        let cellContent = row[i] || '';
+        // Convert any raw '<br>' text to actual tags
+        cellContent = cellContent.replace(/&lt;br\s*\/?&gt;/gi, '<br/>').replace(/<br\s*\/?>/gi, '<br/>');
+        html += `<td style="padding: 12px; border: 2px solid rgba(249, 115, 22, 0.4) !important; min-height: 24px; transition: background 0.2s; text-align: left; font-weight: 500; font-size: 13px; color: #0f172a;">${cellContent}</td>`;
+      }
+      html += '</tr>';
+    }
+    html += '</tbody></table></div><p><br></p>';
+    return html;
+  };
+
   const handleEditorPaste = (e: React.ClipboardEvent<HTMLDivElement>) => {
     e.preventDefault();
-    const text = e.clipboardData.getData('text/plain');
+    const html = e.clipboardData.getData('text/html');
+    const plainText = e.clipboardData.getData('text/plain').trim();
+    
     const sel = window.getSelection();
     if (!sel || sel.rangeCount === 0) return;
     
     const range = sel.getRangeAt(0);
     range.deleteContents();
-    
-    const textNode = document.createTextNode(text);
+
+    // 1. Check if plain text is a markdown table
+    if (plainText && (plainText.includes('|') && (plainText.includes('|-') || plainText.includes('-|') || plainText.split('\n').some(l => l.trim().startsWith('|'))))) {
+      const tableHtml = parseMarkdownTableToHtml(plainText);
+      if (tableHtml) {
+        const div = document.createElement('div');
+        div.innerHTML = tableHtml;
+        range.insertNode(div);
+        
+        const newRange = document.createRange();
+        newRange.setStartAfter(div);
+        newRange.setEndAfter(div);
+        sel.removeAllRanges();
+        sel.addRange(newRange);
+        
+        if (editorRef.current && selectedTopic) {
+          updateTopic(selectedTopic.id, { content: editorRef.current.innerHTML });
+        }
+        return;
+      }
+    }
+
+    // 2. Check if rich HTML contains a table or list
+    if (html && (html.includes('<table') || html.includes('<ul') || html.includes('<ol') || html.includes('<li') || html.includes('<h'))) {
+      const div = document.createElement('div');
+      div.innerHTML = html;
+      
+      const allElements = div.querySelectorAll('*');
+      allElements.forEach((el: any) => {
+        if (el.style) {
+          el.style.position = '';
+          el.style.top = '';
+          el.style.left = '';
+          el.style.float = '';
+        }
+      });
+
+      const fragment = document.createDocumentFragment();
+      while (div.firstChild) {
+        fragment.appendChild(div.firstChild);
+      }
+      
+      const lastNode = fragment.lastChild;
+      range.insertNode(fragment);
+      
+      if (lastNode) {
+        const newRange = document.createRange();
+        newRange.setStartAfter(lastNode);
+        newRange.setEndAfter(lastNode);
+        sel.removeAllRanges();
+        sel.addRange(newRange);
+      }
+
+      if (editorRef.current && selectedTopic) {
+        updateTopic(selectedTopic.id, { content: editorRef.current.innerHTML });
+      }
+      return;
+    }
+
+    // 3. Fallback to clean plain text
+    const textNode = document.createTextNode(plainText || e.clipboardData.getData('text/plain'));
     range.insertNode(textNode);
     
     const newRange = document.createRange();

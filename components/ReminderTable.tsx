@@ -350,14 +350,13 @@ const ReminderTable: React.FC<ReminderTableProps> = ({
             <thead className="sticky top-0 z-40 bg-white/10 backdrop-blur-xl">
               <tr className="border-b border-white/20">
                 <th className="w-16 h-14 text-[10px] font-black text-slate-900 uppercase tracking-widest">#</th>
-                <th className="w-[30%] text-left px-4 text-[10px] font-black text-slate-900 uppercase tracking-widest pt-5">
+                <th className="w-[45%] text-left px-4 text-[10px] font-black text-slate-900 uppercase tracking-widest pt-5">
                   Task / Item
                 </th>
                 <th className="w-40 text-center text-[10px] font-black text-slate-900 uppercase tracking-widest">Deadline</th>
                 <th className="w-32 text-center text-[10px] font-black text-slate-900 uppercase tracking-widest">Priority</th>
                 <th className="w-32 text-center text-[10px] font-black text-slate-900 uppercase tracking-widest">Recurring</th>
                 <th className="w-36 text-center text-[10px] font-black text-slate-900 uppercase tracking-widest">Status</th>
-                <th className="text-left px-4 text-[10px] font-black text-slate-900 uppercase tracking-widest">Notes</th>
                 <th className="w-16 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">Del</th>
               </tr>
             </thead>
@@ -488,21 +487,6 @@ const ReminderTable: React.FC<ReminderTableProps> = ({
                       <option value="Completed">Completed</option>
                       <option value="Urgent">Urgent</option>
                     </select>
-                  </td>
-                  <td className="px-4 relative group/note">
-                    <MultilineInput 
-                      value={s.note || ''} 
-                      onChange={val => updateField(s.id, 'note', val)}
-                      placeholder="Add details..."
-                      style={{ 
-                        fontFamily: settings?.fontFamily || "Inter, sans-serif",
-                        fontSize: `${Math.max(13, (settings?.fontSize || 14) - 1)}px`
-                      }}
-                      className="w-full bg-transparent font-bold text-slate-500 outline-none placeholder:text-slate-200"
-                    />
-                    <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover/note:opacity-100 transition-opacity">
-                      <DictationButton onResult={(text) => { const prev = s.note || ''; updateField(s.id, 'note', prev + text); }} />
-                    </div>
                   </td>
                   <td className="text-center px-4">
                     <div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">

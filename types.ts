@@ -141,6 +141,14 @@ export interface HabitCompletion {
   [habitId: string]: boolean | number;
 }
 
+export interface DailyPerformanceTask {
+  id: string;
+  name: string;
+  color: string; // 'blue' | 'green' | 'red' | 'yellow' | 'purple' etc.
+  priority?: 'Low' | 'Medium' | 'High';
+  category?: string;
+}
+
 export interface AppData {
   students: Student[];
   settings?: AppSettings;
@@ -165,6 +173,9 @@ export interface AppData {
   advancedHabitNotes?: Record<string, Record<string, string>>; // Key: YYYY-MM-DD, value: { habitId: notesText }
   habitReframers?: HabitReframerRecord[];
   recurringExpenses?: RecurringExpense[];
+  dailyPerformanceTasks?: DailyPerformanceTask[];
+  dailyPerformanceCompletions?: Record<string, Record<string, boolean>>; // Key: YYYY-MM-DD, value is { [taskId]: boolean }
+  tomorrowTasks?: { id: string; name: string; completed: boolean }[];
 }
 
 export interface HabitReframerRecord {
@@ -279,6 +290,7 @@ export enum Tab {
   AdvancedHabitTracker = 'AdvancedHabitTracker',
   Reflections = 'Reflections',
   DailyJournal = 'DailyJournal',
+  DailyPerformanceCheck = 'DailyPerformanceCheck',
   Reminder = 'Reminder',
   DPSS = 'DPSS',
   SelfLearning = 'SelfLearning',

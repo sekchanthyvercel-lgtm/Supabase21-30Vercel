@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import { HabitTracker } from "./components/HabitTracker";
 import { DailyJournal } from "./components/DailyJournal";
+import { DailyPerformanceCheck } from "./components/DailyPerformanceCheck";
 import { Reflections } from "./components/Reflections";
 import { AdvancedHabitTracker } from "./components/AdvancedHabitTracker";
 import { ExpenseTracker } from "./components/ExpenseTracker";
@@ -218,7 +218,7 @@ const App: React.FC = () => {
   const [redoStack, setRedoStack] = useState<AppData[]>([]);
   const [showSyncToast, setShowSyncToast] = useState(false);
 
-  const [activeTab, setActiveTab] = useState<Tab>(Tab.SelfLearning);
+  const [activeTab, setActiveTab] = useState<Tab>(Tab.DailyPerformanceCheck);
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
     const stored = localStorage.getItem("dps_sidebar_open");
     if (stored !== null) return stored === "true";
@@ -1206,14 +1206,6 @@ const App: React.FC = () => {
         >
           <div className="flex-1 flex flex-col overflow-visible md:overflow-hidden h-full min-h-0 w-full">
             <>
-              {activeTab === Tab.HabitTracker && (
-                <HabitTracker
-                  data={data}
-                  onUpdate={handleUpdate}
-                  onUpdateHabitCompletion={handleUpdateHabitCompletion}
-                  onUpdateDailyNote={handleUpdateDailyNote}
-                />
-              )}
               {activeTab === Tab.AdvancedHabitTracker && (
                 <AdvancedHabitTracker data={data} onUpdate={handleUpdate} />
               )}
@@ -1225,6 +1217,12 @@ const App: React.FC = () => {
                   data={data}
                   onUpdate={handleUpdate}
                   onUpdateJournalEntry={handleUpdateJournalEntry}
+                />
+              )}
+              {activeTab === Tab.DailyPerformanceCheck && (
+                <DailyPerformanceCheck
+                  data={data}
+                  onUpdate={handleUpdate}
                 />
               )}
               {activeTab === Tab.Reminder && (
