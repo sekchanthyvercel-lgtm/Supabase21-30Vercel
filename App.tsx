@@ -1204,7 +1204,7 @@ const App: React.FC = () => {
             height: `${100 / globalScale}%`,
           }}
         >
-          <div className="flex-1 flex flex-col overflow-visible md:overflow-hidden h-full min-h-0 w-full">
+          <div className="flex-1 flex flex-col pt-16 md:pt-0 overflow-visible md:overflow-hidden h-full min-h-0 w-full">
             <>
               {activeTab === Tab.AdvancedHabitTracker && (
                 <AdvancedHabitTracker data={data} onUpdate={handleUpdate} />

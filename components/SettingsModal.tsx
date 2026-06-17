@@ -420,14 +420,39 @@ export const SettingsModal: React.FC<Props> = ({ isOpen, onClose, settings, onUp
                                  onClick={handleEmailPasswordAction}
                                  disabled={isEmailLoading || !email || !password}
                                  className="px-6 w-full py-2.5 bg-slate-800 text-white rounded-xl hover:bg-slate-900 shadow-lg transition-all font-black uppercase text-xs flex items-center justify-center gap-2 disabled:opacity-50"
-                               >
+                                >
                                  {isEmailLoading ? (
-                                   <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                                  ) : (
-                                   <LogIn size={16} />
+                                    <LogIn size={16} />
                                  )}
                                  {isSignUpMode ? 'Sign Up' : 'Sign In'} with Email
                                </button>
+
+                               {isSignUpMode && (
+                                 <div className="bg-orange-50/70 border border-orange-200/80 p-3 rounded-xl text-left leading-relaxed text-[11px] space-y-1.5 shadow-sm">
+                                   <div className="font-extrabold text-orange-850 flex items-center gap-1">
+                                     <span>⚡ Direct Link: Bypass Email Activation</span>
+                                   </div>
+                                   <p className="text-slate-600 font-bold leading-normal">
+                                     Supabase free tier restricts signup emails. To register and sync data instantly without any email checks:
+                                   </p>
+                                   <div>
+                                     <a 
+                                       href={getDirectAuthProvidersUrl()} 
+                                       target="_blank" 
+                                       rel="noopener noreferrer" 
+                                       className="inline-flex items-center gap-1 px-3 py-1.5 bg-orange-600 hover:bg-orange-700 active:scale-95 text-white text-[10px] font-black uppercase rounded-lg shadow-sm tracking-wider transition-all"
+                                     >
+                                       Disable Email Confirmation <ExternalLink size={11} />
+                                     </a>
+                                   </div>
+                                   <p className="text-[10px] text-slate-500 font-bold leading-normal">
+                                     Toggle <span className="text-rose-700 font-extrabold font-mono text-[11px]">Confirm email</span> to <span className="text-rose-750 font-black">OFF</span> and click save on the Supabase dashboard.
+                                   </p>
+                                 </div>
+                               )}
+
                                <div className="text-center">
                                   <button
                                      onClick={() => setIsSignUpMode(!isSignUpMode)}
