@@ -142,13 +142,23 @@ export const fetchData = async (userId: string) => {
   } catch (error) { return null; }
 };
 
+let saveTimeout: ReturnType<typeof setTimeout> | null = null;
+let latestDataState: any = null;
+
 export const saveData = async (userId: string, dataState: any) => {
   if (!isConfigured) return;
-  try {
-    const { error } = await supabase.from('dps_data').upsert({ owner_id: userId, data: dataState, updated_at: new Date().toISOString() }, { onConflict: 'owner_id' });
-    if (error) console.error("Supabase Save Error:", error.message);
-    lastSyncStatus = !error;
-  } catch (error) {}
+  
+  latestDataState = dataState;
+  
+  if (saveTimeout) clearTimeout(saveTimeout);
+  
+  saveTimeout = setTimeout(async () => {
+    try {
+      const { error } = await supabase.from('dps_data').upsert({ owner_id: userId, data: latestDataState, updated_at: new Date().toISOString() }, { onConflict: 'owner_id' });
+      if (error) console.error("Supabase Save Error:", error.message);
+      lastSyncStatus = !error;
+    } catch (error) {}
+  }, 800);
 };
 
 export const uploadFile = async (userId: string, file: File): Promise<string | null> => {

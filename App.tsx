@@ -167,7 +167,7 @@ const App: React.FC = () => {
     };
   }, []);
 
-  const [data, setData] = useState<AppData>(() => {
+  const [dataLocal, setInternalData] = useState<AppData>(() => {
     const stored = localStorage.getItem("dps_data");
     if (stored) {
       try {
@@ -213,6 +213,14 @@ const App: React.FC = () => {
       attendance: {},
     };
   });
+  
+  const lastLocalUpdateRef = useRef<number>(0);
+  const data = dataLocal;
+  const setData = (action: React.SetStateAction<AppData>) => {
+    lastLocalUpdateRef.current = Date.now();
+    setInternalData(action);
+  };
+
 
   const [history, setHistory] = useState<AppData[]>([]);
   const [redoStack, setRedoStack] = useState<AppData[]>([]);
@@ -542,6 +550,12 @@ const App: React.FC = () => {
       uid,
       (newData) => {
         isCloudLoadedRef.current = true;
+        
+        // Prevent incoming remote updates from overwriting recent local updates (echo loop)
+        if (Date.now() - lastLocalUpdateRef.current < 2500) {
+          return;
+        }
+
         // Ensure DEFAULT_COLUMNS are initialized
         if (!newData.settings?.columns) {
           newData.settings = {
@@ -586,7 +600,7 @@ const App: React.FC = () => {
         }
 
         previousDataSyncRef.current = JSON.stringify(newData);
-        setData(newData);
+        setInternalData(newData);
         storage.setItem("dps_data", JSON.stringify(newData)); // SYNC to storage
         setLoading(false);
       },
@@ -599,13 +613,22 @@ const App: React.FC = () => {
   }, [currentUser?.uid, isAuthInitializing]);
 
   const handlePermanentDeleteStudent = async (id: string) => {
+    const previousData = { ...data };
     const updatedStudents = data.students.filter((s) => s.id !== id);
     const newData = { ...data, students: updatedStudents };
     setData(newData);
     storage.setItem("dps_data", JSON.stringify(newData));
+
     if (currentUser?.uid) {
-      const { deleteStudent } = await import("./services/supabase");
-      await deleteStudent(currentUser.uid, id);
+      try {
+        const { deleteStudent } = await import("./services/supabase");
+        await deleteStudent(currentUser.uid, id);
+      } catch (error) {
+        console.error("Failed to delete student:", error);
+        setData(previousData);
+        storage.setItem("dps_data", JSON.stringify(previousData));
+        alert("Failed to delete student. The action has been reverted.");
+      }
     }
   };
 
@@ -645,21 +668,29 @@ const App: React.FC = () => {
         }));
     };
 
+    const previousData = { ...data };
     const updatedTopics = deleteFromTopics(data[field] || []);
     const newData = { ...data, [field]: updatedTopics };
     setData(newData);
     storage.setItem("dps_data", JSON.stringify(newData));
 
     if (currentUser?.uid) {
-      const { deleteTopic, saveTopic } = await import("./services/supabase");
-      if (isRoot) {
-        await deleteTopic(currentUser.uid, id, category);
-      } else {
-        // Find the updated root in the new data to save it
-        const updatedRoot = updatedTopics.find((t) => t.id === rootToRemove.id);
-        if (updatedRoot) {
-          await saveTopic(currentUser.uid, updatedRoot, category);
+      try {
+        const { deleteTopic, saveTopic } = await import("./services/supabase");
+        if (isRoot) {
+          await deleteTopic(currentUser.uid, id, category);
+        } else {
+          // Find the updated root in the new data to save it
+          const updatedRoot = updatedTopics.find((t) => t.id === rootToRemove.id);
+          if (updatedRoot) {
+            await saveTopic(currentUser.uid, updatedRoot, category);
+          }
         }
+      } catch (error) {
+        console.error("Failed to delete topic:", error);
+        setData(previousData);
+        storage.setItem("dps_data", JSON.stringify(previousData));
+        alert("Failed to delete topic. The action has been reverted.");
       }
     }
   };

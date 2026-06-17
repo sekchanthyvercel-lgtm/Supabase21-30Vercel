@@ -13,7 +13,7 @@ export const PAPER_STYLES: PaperStyleDefinition[] = [
   { id: 'grid', name: 'Math Grid', className: 'paper-grid shadow-xl', previewColor: '#f1f5f9' },
   { id: 'dots', name: 'Bullet Dot', className: 'paper-dots shadow-xl', previewColor: '#f8fafc' },
   { id: 'stars', name: 'Stardust', className: 'paper-stardust shadow-xl text-slate-800', previewColor: '#f5f3ff' },
-  { id: 'roses', name: 'Rose Garden', className: 'bg-rose-50 border- rose-200/50 shadow-xl', previewColor: '#fff1f2' },
+  { id: 'roses', name: 'Rose Garden', className: 'bg-rose-50 border border-rose-200/50 shadow-xl', previewColor: '#fff1f2' },
   { id: 'colorful', name: 'Bright Pop', className: 'bg-white border-8 border-double border-pink-200 ring-8 ring-indigo-50 shadow-2xl', previewColor: '#fdf2f8' },
   { id: 'floral', name: 'Elegant Floral', className: 'bg-[#fafaf9] border-t-8 border-emerald-100 shadow-xl', previewColor: '#f5f5f4' },
   { id: 'engineering', name: 'Engineering', className: 'paper-engineering shadow-xl', previewColor: '#eff6ff' },

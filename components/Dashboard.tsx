@@ -6,8 +6,9 @@ import {
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar
 } from 'recharts';
 import { format, subDays, addDays, eachDayOfInterval, isSameDay, parseISO, isValid, startOfWeek, isWithinInterval, startOfDay, endOfDay, startOfMonth, endOfMonth, startOfYear } from 'date-fns';
-import { TrendingUp, TrendingDown, Activity, Wallet, Target, Sparkles, Brain, ArrowUpRight, Download, Calendar } from 'lucide-react';
+import { TrendingUp, TrendingDown, Activity, Wallet, Target, Sparkles, Brain, ArrowUpRight, Download, Calendar, CheckCircle2, RefreshCw } from 'lucide-react';
 import html2pdf from 'html2pdf.js';
+import ReactMarkdown from 'react-markdown';
 
 interface DashboardProps {
   data: AppData;
@@ -54,6 +55,100 @@ const Dashboard: React.FC<DashboardProps> = ({ data }) => {
   const [financeRange, setFinanceRange] = useState<'7d' | '30d' | '90d' | 'Month' | 'Year' | 'Custom'>('Month');
   const [customStart, setCustomStart] = useState<string>(format(subDays(new Date(), 30), 'yyyy-MM-dd'));
   const [customEnd, setCustomEnd] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
+
+  const [reportText, setReportText] = useState<string>('');
+  const [loadingReport, setLoadingReport] = useState<boolean>(false);
+  const [reportError, setReportError] = useState<string>('');
+  const [loadingStatus, setLoadingStatus] = useState<string>('');
+
+  const generateGeminiSummary = async () => {
+    setLoadingReport(true);
+    setReportError('');
+    setReportText('');
+    setLoadingStatus('Initializing Peak Performance Engine...');
+    
+    try {
+      const last7DaysInterval = Array.from({ length: 7 }, (_, i) => subDays(new Date(), i)).reverse();
+      const formattedLogs = last7DaysInterval.map(day => {
+        const dKey = format(day, 'yyyy-MM-dd');
+        const journalObj = data.journalEntries?.[dKey];
+        const dayCompletions = data.dailyPerformanceCompletions?.[dKey] || {};
+        const activeTasks = data.dailyPerformanceTasks || [];
+        
+        const completedTasks = activeTasks.filter(t => dayCompletions[t.id]).map(t => t.name);
+        const pendingTasks = activeTasks.filter(t => !dayCompletions[t.id]).map(t => t.name);
+        
+        return `
+Date: ${dKey}
+Journal Details:
+- Affirmation: ${journalObj?.affirmation || 'None'}
+- Key Gratitude: ${journalObj?.gratitude || 'None'}
+- Achievements: ${journalObj?.achievements?.join(', ') || 'None'}
+- Learnings: ${journalObj?.learning || 'None'}
+- Discipline/Routine: ${journalObj?.discipline || 'None'}
+- Focus Level: ${journalObj?.focusRating !== undefined ? `${journalObj.focusRating}/10` : 'Not Rated'}
+- Energy Level: ${journalObj?.energyRating !== undefined ? `${journalObj.energyRating}/10` : 'Not Rated'}
+- Productivity: ${journalObj?.productivityRating !== undefined ? `${journalObj.productivityRating}/10` : 'Not Rated'}
+
+Daily Performance Checklist:
+- Completed Tasks: ${completedTasks.join(', ') || 'None'}
+- Outstanding Tasks: ${pendingTasks.join(', ') || 'None'}
+`;
+      }).join('\n---\n');
+
+      setLoadingStatus('Gathering structural notes and learning patterns...');
+      const totalNotesCount = (data.dpssTopics || []).length;
+      const selfLearningTopics = (data.selfLearningTopics || []).map(t => t.title).join(', ') || 'None';
+
+      const finalPrompt = `
+You are the Growth Portal peak performance intelligence system. Critically analyze the user's weekly performance metrics, notes, and progress logs, and output an executive summarized performance report with coaching directives.
+
+USER PROGRESS ENVIRONMENT IN THE PAST 7 DAYS:
+${formattedLogs}
+
+Total Note-taking topics created: ${totalNotesCount}
+Self-Learning research areas: ${selfLearningTopics}
+
+Please construct your response with the following sections formatted in beautiful Markdown:
+1. **Executive Performance Recap**: Summarize accomplishments and highlight clear weekly strengths based on the ratings and journals.
+2. **Task Completion Audit**: Critically review their checklist performance (completed vs outstanding tasks).
+3. **Discipline & Knowledge Synthesis**: Evaluate their cognitive focus (based on learnings and notes created).
+4. **Coaching Recommendations**: Deliver 3 highly tactical action items for next week's focus of energy.
+
+Keep the tone encouraging, premium, and professional. Deeply reference specific learnings or ratings that the user has inputted.
+`;
+
+      setLoadingStatus('Consulting Gemini AI Coach...');
+      const response = await fetch('/api/ai/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          prompt: finalPrompt,
+          model: 'gemini-3.5-flash',
+          systemInstruction: 'You are an executive high-performance coach specializing in cognitive optimization and routine discipline.'
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Could not get response from AI summary endpoint.');
+      }
+
+      setLoadingStatus('Formulating peak coaching protocols...');
+      const resData = await response.json();
+      if (resData.error) {
+        throw new Error(resData.error);
+      }
+      setReportText(resData.text || '');
+    } catch (err: any) {
+      console.error(err);
+      setReportError(err.message || 'Error occurred while constructing the report. Please try again.');
+    } finally {
+      setLoadingReport(false);
+      setLoadingStatus('');
+    }
+  };
 
   const financeFilterInterval = useMemo(() => {
     const now = new Date();
@@ -231,6 +326,32 @@ const Dashboard: React.FC<DashboardProps> = ({ data }) => {
       };
     });
   }, [data.habitCompletions, data.habits]);
+
+  const dailyPerformanceTaskData = useMemo(() => {
+    const days = eachDayOfInterval({
+      start: subDays(new Date(), 6),
+      end: new Date(),
+    });
+
+    const tasks = data.dailyPerformanceTasks || [];
+    const completions = data.dailyPerformanceCompletions || {};
+
+    return days.map(day => {
+      const dateKey = format(day, 'yyyy-MM-dd');
+      const dayCompletions = completions[dateKey] || {};
+      
+      const totalActiveTasks = tasks.length;
+      const completedTasksCount = tasks.filter(t => dayCompletions[t.id] === true).length;
+      const completionRate = totalActiveTasks > 0 ? Math.round((completedTasksCount / totalActiveTasks) * 100) : 0;
+
+      return {
+        date: format(day, 'MMM dd'),
+        completed: completedTasksCount,
+        total: totalActiveTasks,
+        rate: completionRate,
+      };
+    });
+  }, [data.dailyPerformanceTasks, data.dailyPerformanceCompletions]);
 
   const radarHabitData = useMemo(() => {
     const habits = data.habits || [];
@@ -690,6 +811,76 @@ const Dashboard: React.FC<DashboardProps> = ({ data }) => {
           </div>
         )}
 
+        {/* Gemini Intelligence Custom Report */}
+        <div className="bg-slate-900 text-white p-8 rounded-[40px] border border-slate-800 shadow-2xl relative overflow-hidden group">
+          {/* Decorative glowing backdrops */}
+          <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute bottom-0 left-0 w-80 h-80 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
+
+          <div className="relative flex flex-col md:flex-row items-start md:items-center justify-between gap-6 pb-6 border-b border-white/10">
+            <div>
+              <div className="flex items-center gap-2 text-indigo-400 font-bold text-xs uppercase tracking-widest mb-1.5 font-sans">
+                <Sparkles size={14} className="animate-pulse" />
+                <span>AI Performance Advisory</span>
+              </div>
+              <h2 className="text-2xl font-black italic uppercase tracking-tight font-sans">Gemini Growth Synopsis</h2>
+              <p className="text-slate-400 text-sm mt-1">Generate a customized, high-performance coaching report summarizing your weekly journals, checklist accuracy, and note progress.</p>
+            </div>
+            
+            <button
+              onClick={generateGeminiSummary}
+              disabled={loadingReport}
+              className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 px-6 py-3.5 rounded-3xl font-black text-xs uppercase tracking-widest transition-all shadow-lg shadow-indigo-600/30 flex-shrink-0 cursor-pointer"
+            >
+              {loadingReport ? (
+                <>
+                  <RefreshCw size={14} className="animate-spin" />
+                  <span>Synthesizing...</span>
+                </>
+              ) : (
+                <>
+                  <Brain size={14} />
+                  <span>Generate Weekly Coach Summary</span>
+                </>
+              )}
+            </button>
+          </div>
+
+          <div className="relative mt-6 min-h-[100px] flex flex-col justify-center">
+            {loadingReport && (
+              <div className="flex flex-col items-center justify-center py-8 space-y-4 text-center">
+                <div className="relative flex items-center justify-center">
+                  <div className="w-12 h-12 border-4 border-indigo-500/25 border-t-indigo-500 rounded-full animate-spin" />
+                  <Sparkles size={16} className="absolute text-indigo-400 animate-pulse" />
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs font-black uppercase text-indigo-400 tracking-widest animate-pulse font-sans">{loadingStatus}</p>
+                  <p className="text-[10px] text-slate-500">Retrieving weekly focus metrics, task completions, and custom notes...</p>
+                </div>
+              </div>
+            )}
+
+            {reportError && (
+              <div className="bg-rose-500/10 border border-rose-500/30 p-4 rounded-2xl text-center text-rose-300 antialiased font-semibold text-sm font-sans">
+                ⚠️ {reportError}
+              </div>
+            )}
+
+            {!loadingReport && !reportError && reportText && (
+              <div className="text-slate-300 font-sans prose prose-invert max-w-none text-sm leading-relaxed space-y-4 bg-indigo-950/15 p-6 rounded-3xl border border-indigo-500/10 animate-in fade-in duration-500">
+                <ReactMarkdown>{reportText}</ReactMarkdown>
+              </div>
+            )}
+
+            {!loadingReport && !reportError && !reportText && (
+              <div className="text-center py-6">
+                <p className="text-xs font-black uppercase text-slate-500 tracking-wider font-sans">No active summary synthesized yet.</p>
+                <p className="text-[11px] text-slate-600 mt-1">Click the button above to compile your weekly journals, daily notes, and learning track performance via Gemini.</p>
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Charts Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           
@@ -707,6 +898,34 @@ const Dashboard: React.FC<DashboardProps> = ({ data }) => {
                 <Bar dataKey="completed" fill="#f59e0b" radius={[6, 6, 0, 0]} barSize={30} />
               </BarChart>
             </ResponsiveContainer>
+          </ChartContainer>
+
+          {/* Daily Performance Tasks Trends */}
+          <ChartContainer title="Task Completion Rate (Last 7 Days)" icon={CheckCircle2} color="emerald">
+            <div className="space-y-4">
+              <p className="text-[11px] text-slate-500 font-bold uppercase tracking-wider pl-1 font-sans">
+                Track completion rate and total completed items from your daily performance checklist.
+              </p>
+              <ResponsiveContainer width="100%" height={300}>
+                <AreaChart data={dailyPerformanceTaskData}>
+                  <defs>
+                    <linearGradient id="colorTaskRate" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.2}/>
+                      <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 700, fill: '#64748b'}} />
+                  <YAxis axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 700, fill: '#64748b'}} unit="%" domain={[0, 100]} />
+                  <Tooltip 
+                    contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontWeight: 'bold' }}
+                  />
+                  <Legend />
+                  <Area type="monotone" name="Completion Rate (%)" dataKey="rate" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorTaskRate)" />
+                  <Line type="monotone" name="Completed Tasks" dataKey="completed" stroke="#3b82f6" strokeWidth={2} dot={{ r: 4 }} />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
           </ChartContainer>
 
           {/* Weekly Habit Trends (Balanced Growth Radar) */}

@@ -35,6 +35,45 @@ const colors = [
   { name: 'Amber', value: '#b45309' },
 ];
 
+const COLOR_PALETTES = [
+  {
+    name: 'Cosmic Lavender',
+    fontColor: '#4c1d95',
+    appBackgroundColor: '#faf5ff',
+    dateTextColor: '#8b5cf6'
+  },
+  {
+    name: 'Forest Sage',
+    fontColor: '#064e3b',
+    appBackgroundColor: '#ecfdf5',
+    dateTextColor: '#10b981'
+  },
+  {
+    name: 'Nordic Slate',
+    fontColor: '#0f172a',
+    appBackgroundColor: '#f1f5f9',
+    dateTextColor: '#475569'
+  },
+  {
+    name: 'Sunset Glow',
+    fontColor: '#78350f',
+    appBackgroundColor: '#fffbeb',
+    dateTextColor: '#d97706'
+  },
+  {
+    name: 'Rose Quartz',
+    fontColor: '#4c0519',
+    appBackgroundColor: '#fff1f2',
+    dateTextColor: '#f43f5e'
+  },
+  {
+    name: 'Classic Ivory',
+    fontColor: '#0f172a',
+    appBackgroundColor: '#fafaf9',
+    dateTextColor: '#f97316'
+  }
+];
+
 const WALLPAPER_PRESETS_GROUPED = {
   'Light Purple': [
     { name: 'Lavender Mist', url: 'https://images.unsplash.com/photo-1550537687-c91072c4792d?auto=format&fit=crop&q=80&w=2000' },
@@ -197,6 +236,422 @@ export const SettingsModal: React.FC<Props> = ({ isOpen, onClose, settings, onUp
     } catch (e: any) {
       console.error(e);
       alert("Error generating manual backup file");
+    }
+  };
+
+  const handlePrintJournalAndTasks = () => {
+    if (!appData) return;
+    try {
+      const journalEntries = appData.journalEntries || {};
+      const tasks = appData.dailyPerformanceTasks || [];
+      const completions = appData.dailyPerformanceCompletions || {};
+      
+      const sortedDates = Object.keys(journalEntries).sort().reverse();
+      
+      // Calculate completion statistics
+      const totalTasks = tasks.length;
+      let totalCompletedCount = 0;
+      let totalOpportunityCount = 0;
+
+      Object.keys(completions).forEach(dateKey => {
+         const dayComp = completions[dateKey] || {};
+         tasks.forEach(t => {
+            totalOpportunityCount++;
+            if (dayComp[t.id]) totalCompletedCount++;
+         });
+      });
+
+      const overallCompletionRate = totalOpportunityCount > 0 
+         ? Math.round((totalCompletedCount / totalOpportunityCount) * 100) 
+         : 0;
+
+      const htmlContent = `
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+          <meta charset="UTF-8">
+          <title>Growth Portal - Journals & Task Performance Report</title>
+          <style>
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap');
+            body {
+              font-family: 'Inter', sans-serif;
+              color: #1e293b;
+              background-color: #f8fafc;
+              margin: 0;
+              padding: 40px;
+              line-height: 1.5;
+            }
+            .container {
+              max-width: 850px;
+              margin: 0 auto;
+              background: #ffffff;
+              padding: 50px;
+              border-radius: 24px;
+              box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+              border: 1px solid #e2e8f0;
+            }
+            .header {
+              border-bottom: 3px double #e2e8f0;
+              padding-bottom: 25px;
+              margin-bottom: 35px;
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+            }
+            .title {
+              font-size: 32px;
+              font-weight: 900;
+              text-transform: uppercase;
+              letter-spacing: -1px;
+              color: #0f172a;
+              margin: 0;
+            }
+            .subtitle {
+              font-size: 13px;
+              font-weight: 600;
+              color: #64748b;
+              text-transform: uppercase;
+              letter-spacing: 2px;
+              margin-top: 5px;
+            }
+            .meta-info {
+              text-align: right;
+              font-size: 11px;
+              font-weight: 700;
+              color: #94a3b8;
+              text-transform: uppercase;
+              letter-spacing: 1px;
+            }
+            .stat-grid {
+              display: grid;
+              grid-template-cols: repeat(4, 1fr);
+              gap: 15px;
+              margin-bottom: 40px;
+            }
+            .stat-card {
+              background: #f8fafc;
+              border: 1px solid #f1f5f9;
+              padding: 15px;
+              border-radius: 12px;
+              text-align: center;
+            }
+            .stat-value {
+              font-size: 24px;
+              font-weight: 900;
+              color: #4f46e5;
+            }
+            .stat-label {
+              font-size: 9px;
+              font-weight: 800;
+              color: #64748b;
+              text-transform: uppercase;
+              letter-spacing: 1px;
+              margin-top: 3px;
+            }
+            .section-title {
+              font-size: 16px;
+              font-weight: 900;
+              text-transform: uppercase;
+              color: #0f172a;
+              border-bottom: 2px solid #0f172a;
+              padding-bottom: 5px;
+              margin-top: 40px;
+              margin-bottom: 20px;
+              letter-spacing: 1px;
+            }
+            .journal-card {
+              background: #ffffff;
+              border: 1px solid #e2e8f0;
+              border-radius: 16px;
+              padding: 25px;
+              margin-bottom: 25px;
+              page-break-inside: avoid;
+            }
+            .journal-header {
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              border-bottom: 1px solid #f1f5f9;
+              padding-bottom: 12px;
+              margin-bottom: 15px;
+            }
+            .journal-date {
+              font-size: 16px;
+              font-weight: 800;
+              color: #0f172a;
+            }
+            .journal-ratings {
+              display: flex;
+              gap: 8px;
+            }
+            .rating-tag {
+              font-size: 10px;
+              font-weight: 800;
+              color: #475569;
+              background: #f1f5f9;
+              padding: 2px 8px;
+              border-radius: 6px;
+              text-transform: uppercase;
+            }
+            .field-group {
+              margin-bottom: 15px;
+            }
+            .field-label {
+              font-size: 10px;
+              font-weight: 800;
+              color: #6366f1;
+              text-transform: uppercase;
+              letter-spacing: 1px;
+              margin-bottom: 2px;
+            }
+            .field-content {
+              font-size: 13px;
+              color: #334155;
+            }
+            ul.journal-list {
+              margin: 0;
+              padding-left: 18px;
+              font-size: 13px;
+              color: #334155;
+            }
+            .task-table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-bottom: 40px;
+            }
+            .task-table th {
+              background: #0f172a;
+              color: #ffffff;
+              font-size: 10px;
+              font-weight: 900;
+              text-transform: uppercase;
+              letter-spacing: 1px;
+              padding: 12px;
+              text-align: left;
+            }
+            .task-table td {
+              padding: 12px;
+              border-bottom: 1px solid #e2e8f0;
+              font-size: 12px;
+            }
+            .task-table tr:nth-child(even) {
+              background-color: #f8fafc;
+            }
+            .badge-completed {
+              background: #dcfce7;
+              color: #15803d;
+              padding: 2px 8px;
+              border-radius: 6px;
+              font-weight: 800;
+              font-size: 10px;
+              text-transform: uppercase;
+            }
+            .badge-pending {
+              background: #fee2e2;
+              color: #b91c1c;
+              padding: 2px 8px;
+              border-radius: 6px;
+              font-weight: 800;
+              font-size: 10px;
+              text-transform: uppercase;
+            }
+            .print-btn-container {
+              text-align: center;
+              margin-bottom: 20px;
+            }
+            .print-btn {
+              background: #4f46e5;
+              color: #ffffff;
+              border: none;
+              padding: 12px 24px;
+              border-radius: 12px;
+              font-weight: 800;
+              cursor: pointer;
+              box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+              transition: all 0.2s;
+              font-family: 'Inter', sans-serif;
+            }
+            .print-btn:hover {
+              background: #4338ca;
+            }
+            @media print {
+              body {
+                background: #ffffff;
+                padding: 0;
+              }
+              .container {
+                box-shadow: none;
+                border: none;
+                padding: 0;
+              }
+              .print-btn-container {
+                display: none;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="print-btn-container">
+            <button class="print-btn" onclick="window.print()">Print Report / Save as PDF</button>
+          </div>
+          <div class="container">
+            <div class="header">
+              <div>
+                <h1 class="title">Growth Portfolio</h1>
+                <div class="subtitle">Journals & Tasks History Report</div>
+              </div>
+              <div class="meta-info">
+                Generated On<br/>
+                <span style="font-size: 14px; font-weight: 900; color: #0f172a;">${new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+              </div>
+            </div>
+
+            <div class="stat-grid">
+              <div class="stat-card">
+                <div class="stat-value">${Object.keys(journalEntries).length}</div>
+                <div class="stat-label">Total Journals</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-value">${tasks.length}</div>
+                <div class="stat-label">Configured Tasks</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-value">${overallCompletionRate}%</div>
+                <div class="stat-label">Task Completion</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-value">${Object.keys(completions).length}</div>
+                <div class="stat-label">Days Logged</div>
+              </div>
+            </div>
+
+            <div class="section-title">Daily Performance Task Logs</div>
+            <table class="task-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Task Name</th>
+                  <th>Category</th>
+                  <th>Priority</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${
+                  Object.keys(completions).length > 0 ? Object.keys(completions).sort().reverse().map(dateKey => {
+                    const dayComp = completions[dateKey] || {};
+                    return tasks.map(task => {
+                      const isDone = dayComp[task.id] === true;
+                      return `
+                        <tr>
+                          <td style="font-weight: bold;">${dateKey}</td>
+                          <td>${task.name}</td>
+                          <td>${task.category || 'None'}</td>
+                          <td style="font-weight: 600;">${task.priority || 'Medium'}</td>
+                          <td>
+                            <span class="${isDone ? 'badge-completed' : 'badge-pending'}">
+                              ${isDone ? 'Completed' : 'Pending'}
+                            </span>
+                          </td>
+                        </tr>
+                      `;
+                    }).join('');
+                  }).join('') : `<tr><td colspan="5" style="text-align: center; color: #64748b; padding: 20px;">No task historical data logged yet.</td></tr>`
+                }
+              </tbody>
+            </table>
+
+            <div class="section-title">Journal Logs</div>
+            ${
+              sortedDates.length > 0 ? sortedDates.map(dateKey => {
+                const entry = journalEntries[dateKey];
+                return `
+                  <div class="journal-card">
+                    <div class="journal-header">
+                      <div class="journal-date">${dateKey}</div>
+                      <div class="journal-ratings">
+                        ${entry.energyRating !== undefined ? `<div class="rating-tag">Energy: ${entry.energyRating}/10</div>` : ''}
+                        ${entry.focusRating !== undefined ? `<div class="rating-tag">Focus: ${entry.focusRating}/10</div>` : ''}
+                        ${entry.productivityRating !== undefined ? `<div class="rating-tag">Productivity: ${entry.productivityRating}/10</div>` : ''}
+                      </div>
+                    </div>
+
+                    ${entry.affirmation ? `
+                      <div class="field-group">
+                        <div class="field-label">Daily Affirmation</div>
+                        <div class="field-content" style="font-style: italic; font-weight: 600; color: #475569;">"${entry.affirmation}"</div>
+                      </div>
+                    ` : ''}
+
+                    ${entry.gratitude ? `
+                      <div class="field-group">
+                        <div class="field-label">Deep Gratitude</div>
+                        <div class="field-content">${entry.gratitude}</div>
+                      </div>
+                    ` : ''}
+
+                    ${entry.achievements && entry.achievements.length > 0 ? `
+                      <div class="field-group">
+                        <div class="field-label">Key Achievements</div>
+                        <ul class="journal-list">
+                          ${entry.achievements.map(a => `<li>${a}</li>`).join('')}
+                        </ul>
+                      </div>
+                    ` : ''}
+
+                    ${entry.learning ? `
+                      <div class="field-group">
+                        <div class="field-label">Core Learnings</div>
+                        <div class="field-content">${entry.learning}</div>
+                      </div>
+                    ` : ''}
+
+                    ${entry.discipline ? `
+                      <div class="field-group">
+                        <div class="field-label">Discipline & Routine Notes</div>
+                        <div class="field-content">${entry.discipline}</div>
+                      </div>
+                    ` : ''}
+
+                    ${entry.lookingForward ? `
+                      <div class="field-group">
+                        <div class="field-label">Looking Forward</div>
+                        <div class="field-content">${entry.lookingForward}</div>
+                      </div>
+                    ` : ''}
+                  </div>
+                `;
+              }).join('') : `
+                <div style="text-align: center; color: #64748b; padding: 40px; border: 1px dashed #e2e8f0; border-radius: 12px;">
+                  No journal logs completed yet. List some today!
+                </div>
+              `
+            }
+          </div>
+          <script>
+            window.onload = function() {
+              setTimeout(function() {
+                window.print();
+              }, 400);
+            };
+          </script>
+        </body>
+        </html>
+      `;
+
+      const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.href = url;
+      const date = new Date().toISOString().split('T')[0];
+      downloadAnchor.download = `journals-and-performance-report-${date}.html`;
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+      URL.revokeObjectURL(url);
+    } catch (e: any) {
+      console.error(e);
+      alert("Error generating report: " + e.message);
     }
   };
 
@@ -429,30 +884,6 @@ export const SettingsModal: React.FC<Props> = ({ isOpen, onClose, settings, onUp
                                  {isSignUpMode ? 'Sign Up' : 'Sign In'} with Email
                                </button>
 
-                               {isSignUpMode && (
-                                 <div className="bg-orange-50/70 border border-orange-200/80 p-3 rounded-xl text-left leading-relaxed text-[11px] space-y-1.5 shadow-sm">
-                                   <div className="font-extrabold text-orange-850 flex items-center gap-1">
-                                     <span>⚡ Direct Link: Bypass Email Activation</span>
-                                   </div>
-                                   <p className="text-slate-600 font-bold leading-normal">
-                                     Supabase free tier restricts signup emails. To register and sync data instantly without any email checks:
-                                   </p>
-                                   <div>
-                                     <a 
-                                       href={getDirectAuthProvidersUrl()} 
-                                       target="_blank" 
-                                       rel="noopener noreferrer" 
-                                       className="inline-flex items-center gap-1 px-3 py-1.5 bg-orange-600 hover:bg-orange-700 active:scale-95 text-white text-[10px] font-black uppercase rounded-lg shadow-sm tracking-wider transition-all"
-                                     >
-                                       Disable Email Confirmation <ExternalLink size={11} />
-                                     </a>
-                                   </div>
-                                   <p className="text-[10px] text-slate-500 font-bold leading-normal">
-                                     Toggle <span className="text-rose-700 font-extrabold font-mono text-[11px]">Confirm email</span> to <span className="text-rose-750 font-black">OFF</span> and click save on the Supabase dashboard.
-                                   </p>
-                                 </div>
-                               )}
-
                                <div className="text-center">
                                   <button
                                      onClick={() => setIsSignUpMode(!isSignUpMode)}
@@ -491,7 +922,27 @@ export const SettingsModal: React.FC<Props> = ({ isOpen, onClose, settings, onUp
                         <div className="absolute inset-0 flex items-center">
                             <div className="w-full border-t border-slate-200"></div>
                         </div>
-                        <div className="relative flex justify-center text-[10px] uppercase font-bold text-slate-400 bg-transparent">
+                        <div className="relative flex justify-center text-[10px] uppercase font-bold text-slate-400 bg-transparent font-sans">
+                            <span className="bg-white/90 px-2 rounded">Reports & PDF</span>
+                        </div>
+                    </div>
+
+                    <p className="text-[10px] text-slate-400 leading-tight text-center">
+                        Generate a styled offline-printable Growth Portfolio document of all your logs.
+                    </p>
+
+                    <button 
+                      onClick={handlePrintJournalAndTasks}
+                      className="px-6 w-full py-2.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 shadow-lg shadow-emerald-600/30 transition-all font-black uppercase text-xs flex items-center justify-center gap-2"
+                    >
+                      <FileText size={16} /> Print/Export Journals & Tasks
+                    </button>
+
+                    <div className="relative w-full">
+                        <div className="absolute inset-0 flex items-center">
+                            <div className="w-full border-t border-slate-200"></div>
+                        </div>
+                        <div className="relative flex justify-center text-[10px] uppercase font-bold text-slate-400 bg-transparent text-sans">
                             <span className="bg-white/90 px-2 rounded">Restore</span>
                         </div>
                     </div>
@@ -606,6 +1057,42 @@ export const SettingsModal: React.FC<Props> = ({ isOpen, onClose, settings, onUp
 
                 <div className="bg-white/50 border border-white/60 p-4 rounded-2xl shadow-sm space-y-4">
                     <div>
+                        <p className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest mb-3 pl-1">Pre-defined Color Themes</p>
+                        <div className="grid grid-cols-2 gap-2.5 mb-2">
+                            {COLOR_PALETTES.map(p => {
+                                const active = localSettings.fontColor === p.fontColor && 
+                                              (localSettings.appBackgroundColor === p.appBackgroundColor || 
+                                               (!localSettings.appBackgroundColor && p.appBackgroundColor === '#fafaf9'));
+                                return (
+                                    <button
+                                        key={p.name}
+                                        type="button"
+                                        onClick={() => {
+                                            setLocalSettings(prev => ({
+                                                ...prev,
+                                                fontColor: p.fontColor,
+                                                appBackgroundColor: p.appBackgroundColor,
+                                                dateTextColor: p.dateTextColor
+                                            }));
+                                        }}
+                                        className={`p-2.5 rounded-xl border text-left transition-all hover:scale-[1.02] active:scale-[0.98] ${active ? 'border-indigo-500 bg-indigo-50/40 ring-1 ring-indigo-500/20' : 'border-slate-200/60 bg-white/70'}`}
+                                    >
+                                        <div className="flex justify-between items-center mb-1.5">
+                                            <span className="text-[10px] font-black uppercase text-slate-700 tracking-wider leading-none">{p.name}</span>
+                                            {active && <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-pulse" />}
+                                        </div>
+                                        <div className="flex gap-1.5 items-center">
+                                            <span className="w-3.5 h-3.5 rounded border border-slate-200 flex-shrink-0" style={{ backgroundColor: p.appBackgroundColor }} title="Background" />
+                                            <span className="w-3.5 h-3.5 rounded border border-slate-200 flex-shrink-0" style={{ backgroundColor: p.fontColor }} title="Text color" />
+                                            <span className="w-3.5 h-3.5 rounded border border-slate-200 flex-shrink-0" style={{ backgroundColor: p.dateTextColor }} title="Accent color" />
+                                        </div>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+
+                    <div className="pt-2 border-t border-slate-200/50">
                         <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 pl-1">Global App Text Color</p>
                         <div className="flex flex-wrap gap-3">
                             {colors.map(c => (

@@ -29,14 +29,40 @@ interface DailyPerformanceCheckProps {
 }
 
 const PRESET_COLORS = [
-  { name: 'Blue', value: '#3b82f6' },
-  { name: 'Green', value: '#10b981' },
-  { name: 'Red', value: '#ef4444' },
-  { name: 'Yellow', value: '#f59e0b' },
-  { name: 'Purple', value: '#8b5cf6' },
-  { name: 'Orange', value: '#f97316' },
-  { name: 'Pink', value: '#ec4899' },
+  // Blues
+  { name: 'Royal Blue', value: '#3b82f6' },
+  { name: 'Sky Blue', value: '#0ea5e9' },
+  { name: 'Ice Blue', value: '#38bdf8' },
+  { name: 'Cobalt', value: '#2563eb' },
+  
+  // Greens
+  { name: 'Emerald', value: '#10b981' },
+  { name: 'Mint Green', value: '#34d399' },
   { name: 'Teal', value: '#14b8a6' },
+  { name: 'Forest Green', value: '#059669' },
+  { name: 'Sage', value: '#86efac' },
+
+  // Purples
+  { name: 'Light Purple', value: '#c084fc' },
+  { name: 'Classic Purple', value: '#a855f7' },
+  { name: 'Deep Purple', value: '#7c3aed' },
+  { name: 'Lilac', value: '#d8b4fe' },
+  { name: 'Lavender', value: '#e9d5ff' },
+  { name: 'Indigo Violet', value: '#6366f1' },
+  { name: 'Plum', value: '#d946ef' },
+  { name: 'Amethyst', value: '#8b5cf6' },
+
+  // Reds & Pinks
+  { name: 'Crimson Red', value: '#ef4444' },
+  { name: 'Rose Pink', value: '#ec4899' },
+  { name: 'Blush Pink', value: '#fbcfe8' },
+  { name: 'Peach Coral', value: '#fca5a5' },
+  { name: 'Hot Pink', value: '#f472b6' },
+
+  // Yellow / Orange / Amber
+  { name: 'Golden Yellow', value: '#f59e0b' },
+  { name: 'Vibrant Orange', value: '#f97316' },
+  { name: 'Amber Gold', value: '#fbbf24' }
 ];
 
 const DEFAULT_TASKS: DailyPerformanceTask[] = [
@@ -393,27 +419,28 @@ export const DailyPerformanceCheck: React.FC<DailyPerformanceCheckProps> = ({ da
                           </select>
                         </div>
 
-                        <div className="flex items-center gap-1.5 justify-between mt-1.5">
-                          {/* Mini preset colors */}
-                          <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-lg p-1">
-                            {PRESET_COLORS.slice(0, 5).map((col) => (
+                        <div className="flex flex-col gap-1.5 mt-2.5">
+                          <label className="text-[9px] font-black uppercase text-slate-400 block">Task Color (25 Options)</label>
+                          <div className="flex flex-wrap gap-1 bg-white border border-slate-200 rounded-lg p-1.5 max-w-[210px]">
+                            {PRESET_COLORS.map((col) => (
                               <button
                                 key={col.value}
                                 type="button"
                                 onClick={() => setEditingColor(col.value)}
-                                className="w-4 h-4 rounded-full border transition-all hover:scale-110 active:scale-95"
+                                className="w-4 h-4 rounded-full border transition-all hover:scale-125 hover:shadow-xs active:scale-95"
                                 style={{ 
                                   backgroundColor: col.value,
-                                  borderColor: editingColor === col.value ? '#334155' : 'transparent',
+                                  borderColor: editingColor === col.value ? '#1e293b' : 'transparent',
                                   borderWidth: editingColor === col.value ? '2px' : '1px'
                                 }}
                                 title={col.name}
                               />
                             ))}
                           </div>
-                          
-                          {/* Mini action buttons */}
-                          <div className="flex items-center gap-1">
+                        </div>
+                        
+                        {/* Mini action buttons */}
+                        <div className="flex items-center gap-1.5 mt-3 justify-end">
                             <button
                               onClick={() => handleSaveTaskEdit(task.id)}
                               className="p-1 px-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[10px] font-black uppercase tracking-wider transition-all"
@@ -427,7 +454,6 @@ export const DailyPerformanceCheck: React.FC<DailyPerformanceCheckProps> = ({ da
                               Back
                             </button>
                           </div>
-                        </div>
                       </div>
                     ) : (
                       <div 
@@ -563,27 +589,28 @@ export const DailyPerformanceCheck: React.FC<DailyPerformanceCheckProps> = ({ da
                     </select>
                   </div>
 
-                  <div className="flex items-center gap-1.5 justify-between mt-1.5">
-                    {/* Mini preset colors */}
-                    <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-lg p-1">
-                      {PRESET_COLORS.slice(0, 5).map((col) => (
+                  <div className="flex flex-col gap-1.5 mt-1.5">
+                    <label className="text-[9px] font-black uppercase text-slate-400 block">Task Color (25 Options)</label>
+                    <div className="flex flex-wrap gap-1 bg-white border border-slate-200 rounded-lg p-1.5 w-full">
+                      {PRESET_COLORS.map((col) => (
                         <button
                           key={col.value}
                           type="button"
                           onClick={() => setEditingColor(col.value)}
-                          className="w-4 h-4 rounded-full border transition-all hover:scale-110 active:scale-95"
+                          className="w-4 h-4 rounded-full border transition-all hover:scale-125 hover:shadow-xs active:scale-95"
                           style={{ 
                             backgroundColor: col.value,
-                            borderColor: editingColor === col.value ? '#334155' : 'transparent',
+                            borderColor: editingColor === col.value ? '#1e293b' : 'transparent',
                             borderWidth: editingColor === col.value ? '2px' : '1px'
                           }}
                           title={col.name}
                         />
                       ))}
                     </div>
-                    
-                    {/* Mini action buttons */}
-                    <div className="flex items-center gap-1">
+                  </div>
+                  
+                  {/* Mini action buttons */}
+                  <div className="flex items-center gap-1.5 mt-2 justify-end">
                       <button
                         onClick={() => handleSaveTaskEdit(task.id)}
                         className="p-1 px-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[10px] font-black uppercase tracking-wider transition-all"
@@ -597,7 +624,6 @@ export const DailyPerformanceCheck: React.FC<DailyPerformanceCheckProps> = ({ da
                         Back
                       </button>
                     </div>
-                  </div>
                 </div>
               ) : (
                 <div className="flex flex-col gap-3">
@@ -1084,7 +1110,7 @@ export const DailyPerformanceCheck: React.FC<DailyPerformanceCheckProps> = ({ da
                 </div>
 
                 {/* Priority */}
-                <div className="md:col-span-3 w-full">
+                <div className="md:col-span-5 w-full">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">
                     Priority Level
                   </label>
@@ -1111,20 +1137,20 @@ export const DailyPerformanceCheck: React.FC<DailyPerformanceCheckProps> = ({ da
                 </div>
 
                 {/* Color */}
-                <div className="md:col-span-2 w-full">
+                <div className="col-span-12 w-full mt-2">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">
-                    Color
+                    Task/Category Color (25 Premium Options)
                   </label>
-                  <div className="flex items-center justify-between gap-1 bg-white border border-slate-200 rounded-xl p-2 h-[41px]">
-                    {PRESET_COLORS.slice(0, 6).map((col) => (
+                  <div className="flex flex-wrap gap-2 bg-white border border-slate-200 rounded-xl p-3 min-h-[46px]">
+                    {PRESET_COLORS.map((col) => (
                       <button
                         key={col.value}
                         type="button"
                         onClick={() => setNewTaskColor(col.value)}
-                        className="w-5 h-5 rounded-full border transition-all hover:scale-125 focus:outline-none"
+                        className="w-5.5 h-5.5 rounded-full border transition-all hover:scale-125 focus:outline-none hover:shadow-sm"
                         style={{ 
                           backgroundColor: col.value,
-                          borderColor: newTaskColor === col.value ? '#334155' : 'transparent',
+                          borderColor: newTaskColor === col.value ? '#1e293b' : 'transparent',
                           borderWidth: newTaskColor === col.value ? '2px' : '1px'
                         }}
                         title={col.name}

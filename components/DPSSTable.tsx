@@ -21,10 +21,7 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
   const [isUploading, setIsUploading] = useState(false);
   const [isEditorStudyPlanLoading, setIsEditorStudyPlanLoading] = useState(false);
   const [isEditorActionPlanLoading, setIsEditorActionPlanLoading] = useState(false);
-  const [forceLightBg, setForceLightBg] = useState<boolean>(() => {
-    const saved = localStorage.getItem('dpss_plain_light');
-    return saved === null ? true : saved === 'true';
-  });
+  const [forceLightBg, setForceLightBg] = useState<boolean>(false);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [menuPlacement, setMenuPlacement] = useState<'down' | 'up'>('down');
   const [sharingTopicId, setSharingTopicId] = useState<string | null>(null);
@@ -3964,28 +3961,21 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
         {!isSidebarOpen && (
           <button 
             onClick={() => setIsSidebarOpen(true)}
-            className="absolute left-20 top-4 z-[100] p-3 bg-orange-500 text-white rounded-xl shadow-lg hover:bg-orange-600 transition-all active:scale-95 flex items-center justify-center"
+            className="fixed left-20 top-4 z-[100] md:absolute md:left-20 md:top-4 md:z-[100] p-3 bg-orange-500 text-white rounded-xl shadow-lg hover:bg-orange-600 transition-all active:scale-95 flex items-center justify-center"
           >
             <Menu size={24} />
           </button>
         )}
         {selectedTopic ? (
             <div className="space-y-4 h-full flex flex-col">
-                <div className="flex items-center gap-2 md:gap-4 px-2 mt-14 md:mt-0">
+                <div className="flex items-center gap-2 md:gap-4 px-2 mt-2 md:mt-0">
                   {!isSidebarOpen && <div className="w-12 md:hidden shrink-0" />} {/* Spacer for the absolute menu button */}
                   <input 
                       value={selectedTopic.title} 
                       onChange={(e) => updateTopic(selectedTopic.id, { title: e.target.value })}
-                      className={`flex-1 text-2xl md:text-4xl font-black ${forceLightBg ? 'text-slate-900 border-slate-300' : 'text-slate-100 border-orange-500/20'} bg-transparent outline-none p-2 border-b-2 focus:border-orange-500 transition-all min-w-0`}
+                      className={`flex-1 text-2xl md:text-4xl font-black ${forceLightBg ? 'text-slate-900 border-slate-300' : 'text-slate-100 border-orange-500/20'} bg-transparent outline-none p-2 border-b-2 focus:border-orange-500 transition-all min-w-0 text-center uppercase tracking-wide`}
                       placeholder="Topic Title..."
                   />
-                  <button
-                    onClick={() => setShowRuler(!showRuler)}
-                    className={`p-2 shrink-0 ${showRuler ? 'bg-orange-100 text-orange-600 hover:bg-orange-200' : 'bg-white/50 text-slate-500 hover:bg-white'} rounded-xl transition-all shadow-sm`}
-                    title={showRuler ? "Hide Document Grid Rails" : "Show Document Grid Rails"}
-                  >
-                    <Ruler size={18} />
-                  </button>
                   <button
                     onClick={() => setIsToolbarHidden(!isToolbarHidden)}
                     className={`p-2 shrink-0 ${isToolbarHidden ? 'bg-orange-100 text-orange-600 hover:bg-orange-200' : 'bg-white/50 text-slate-500 hover:bg-white'} rounded-xl transition-all shadow-sm`}
