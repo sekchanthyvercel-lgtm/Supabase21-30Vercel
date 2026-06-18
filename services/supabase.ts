@@ -130,12 +130,26 @@ export const subscribeToData = (userId: string, onUpdate: (data: any) => void, o
     })
     .subscribe();
 
+  // Initial fetch
   fetchData(userId).then(data => {
     if (data) onUpdate(data);
     else if (onError) onError();
   }).catch(() => { if (onError) onError(); });
 
-  return () => { supabase.removeChannel(subscription); };
+  // Fallback Polling: every 10 seconds, pull the latest data from the database
+  // to guarantee robust real-time like synchronization even when WebSockets are sleeping or disabled.
+  const pollInterval = setInterval(() => {
+    fetchData(userId).then(data => {
+      if (data) {
+        onUpdate(data);
+      }
+    }).catch(err => console.warn("Fallback sync poll failed:", err));
+  }, 10000);
+
+  return () => { 
+    supabase.removeChannel(subscription); 
+    clearInterval(pollInterval);
+  };
 };
 
 export const fetchData = async (userId: string) => {
@@ -154,24 +168,34 @@ export const fetchData = async (userId: string) => {
 let saveTimeout: ReturnType<typeof setTimeout> | null = null;
 let latestDataState: any = null;
 
-export const saveData = async (userId: string, dataState: any) => {
+export const saveData = async (userId: string, dataState: any, instant: boolean = false) => {
   if (!isConfigured) return;
   
   latestDataState = dataState;
   
   if (saveTimeout) clearTimeout(saveTimeout);
   
-  saveTimeout = setTimeout(async () => {
+  const performSave = async () => {
     try {
-      const { error } = await supabase.from('dps_data').upsert({ owner_id: userId, data: latestDataState, updated_at: new Date().toISOString() }, { onConflict: 'owner_id' });
+      const { error } = await supabase.from('dps_data').upsert(
+        { owner_id: userId, data: latestDataState, updated_at: new Date().toISOString() },
+        { onConflict: 'owner_id' }
+      );
       if (error) {
         console.error("Supabase Save Error:", error.message);
       }
       lastSyncStatus = !error;
     } catch (error) {
-      console.error(error);
+      console.error("Supabase exception during save:", error);
     }
-  }, 800);
+  };
+
+  if (instant) {
+    await performSave();
+  } else {
+    // Shorter debounce (300ms) compared to 800ms, making save nearly instantaneous but still debounced for text entry
+    saveTimeout = setTimeout(performSave, 300);
+  }
 };
 
 export const uploadFile = async (userId: string, file: File): Promise<string | null> => {

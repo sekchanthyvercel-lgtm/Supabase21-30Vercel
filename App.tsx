@@ -284,6 +284,7 @@ const App: React.FC = () => {
       const timer = setTimeout(async () => {
         try {
           const { saveData } = await import("./services/supabase");
+          // Instant saves the snapshot of the data state
           await saveData(currentUser.uid!, data);
           setShowSyncToast(true);
           const toastTimer = setTimeout(() => setShowSyncToast(false), 3000);
@@ -293,7 +294,7 @@ const App: React.FC = () => {
           console.error("Auto Sync Error:", err);
           setIsSyncing(false);
         }
-      }, 1500); // 1.5s debounce
+      }, 400); // Super responsive 400ms debounce
       return () => clearTimeout(timer);
     }
   }, [data, currentUser, loading]);
@@ -569,8 +570,26 @@ const App: React.FC = () => {
         isCloudLoadedRef.current = true;
         setLoading(false);
         
-        // Prevent incoming remote updates from overwriting recent local updates (echo loop)
-        if (Date.now() - lastLocalUpdateRef.current < 2500) {
+        if (!newData) return;
+
+        const incomingStr = JSON.stringify(newData);
+        
+        // 1. If incoming data is exactly what we already have locally, do nothing but keep previousDataSyncRef updated
+        if (JSON.stringify(data) === incomingStr) {
+          previousDataSyncRef.current = incomingStr;
+          return;
+        }
+
+        // 2. If incoming data matches the last state we successfully saved or fetched, ignore (echo block)
+        if (previousDataSyncRef.current === incomingStr) {
+          return;
+        }
+
+        // 3. If there are recent local changes that have been made but not yet synchronized
+        const isLocalDirty = JSON.stringify(data) !== previousDataSyncRef.current;
+        const wasRecentlyUpdated = Date.now() - lastLocalUpdateRef.current < 2000;
+        if (isLocalDirty && wasRecentlyUpdated) {
+          // Keep local changes because they are actively being edited/saved. They will sync to cloud soon.
           return;
         }
 
