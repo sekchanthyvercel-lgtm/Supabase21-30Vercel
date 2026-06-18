@@ -293,7 +293,7 @@ const App: React.FC = () => {
           console.error("Auto Sync Error:", err);
           setIsSyncing(false);
         }
-      }, 800); // Reduced from 1.5s to 800ms
+      }, 1500); // 1.5s debounce
       return () => clearTimeout(timer);
     }
   }, [data, currentUser, loading]);
@@ -570,8 +570,7 @@ const App: React.FC = () => {
         setLoading(false);
         
         // Prevent incoming remote updates from overwriting recent local updates (echo loop)
-        if (Date.now() - lastLocalUpdateRef.current < 1500) {
-          console.log("Local update fresh, skipping remote update to prevent echo loop.");
+        if (Date.now() - lastLocalUpdateRef.current < 2500) {
           return;
         }
 
@@ -729,7 +728,128 @@ const App: React.FC = () => {
         setRedoStack([]);
       }
 
+      previousDataSyncRef.current = JSON.stringify(newData);
       storage.setItem("dps_data", JSON.stringify(newData));
+
+      if (currentUser?.uid) {
+        import("./services/supabase").then(
+          ({
+            saveStudent,
+            saveData,
+            saveTopic,
+            deleteTopic,
+            saveTopicsBulk,
+            saveAttendance,
+            saveDailyNote,
+            saveHabitCompletionBulk,
+            saveHabitList,
+            deleteHabit,
+          }) => {
+            // Specialized sync logic...
+
+            // 1. Sync students
+            const oldStudentsMap = new Map(prev.students.map((s) => [s.id, s]));
+            newData.students.forEach((s) => {
+              const old = oldStudentsMap.get(s.id);
+              if (!old || JSON.stringify(old) !== JSON.stringify(s)) {
+                saveStudent(currentUser.uid!, s);
+              }
+            });
+            prev.students.forEach((s) => {
+              if (!newData.students.find((ns) => ns.id === s.id)) {
+                import("./services/supabase").then((f) =>
+                  f.deleteStudent(currentUser.uid!, s.id),
+                );
+              }
+            });
+
+            // 1.1 Sync habits
+            const oldHabitsMap = new Map(
+              (prev.habits || []).map((h) => [h.id, h]),
+            );
+            (newData.habits || []).forEach((h) => {
+              const old = oldHabitsMap.get(h.id);
+              if (!old || JSON.stringify(old) !== JSON.stringify(h)) {
+                saveHabitList(currentUser.uid!, [h]);
+              }
+            });
+            (prev.habits || []).forEach((h) => {
+              if (!(newData.habits || []).find((nh) => nh.id === h.id)) {
+                deleteHabit(currentUser.uid!, h.id);
+              }
+            });
+
+            // 2. Sync Daily Notes
+            const changedNotes = Object.keys(newData.dailyNotes || {}).filter(
+              (date) => newData.dailyNotes![date] !== prev.dailyNotes?.[date],
+            );
+            changedNotes.forEach((date) =>
+              saveDailyNote(currentUser.uid!, date, newData.dailyNotes![date]),
+            );
+
+            // 3. Sync Habit Completions
+            const changedHabitDates = Object.keys(
+              newData.habitCompletions || {},
+            ).filter(
+              (date) =>
+                JSON.stringify(newData.habitCompletions![date]) !==
+                JSON.stringify(prev.habitCompletions?.[date]),
+            );
+            changedHabitDates.forEach((date) =>
+              saveHabitCompletionBulk(
+                currentUser.uid!,
+                date,
+                newData.habitCompletions![date],
+              ),
+            );
+
+            // 4. Generic sync for settings
+            saveData(currentUser.uid!, newData);
+
+            // 5. Sync Topics (DPSS and Self-Learning)
+            const topicsToSave: {
+              topic: any;
+              category: "dpss" | "selfLearning";
+            }[] = [];
+            const topicIdsToDelete: {
+              id: string;
+              category: "dpss" | "selfLearning";
+            }[] = [];
+
+            ["dpssTopics", "selfLearningTopics"].forEach((field) => {
+              const category = (
+                field === "dpssTopics" ? "dpss" : "selfLearning"
+              ) as "dpss" | "selfLearning";
+              const oldTopicsArr =
+                (prev[field as keyof AppData] as any[]) || [];
+              const newTopicsArr =
+                (newData[field as keyof AppData] as any[]) || [];
+
+              const oldMap = new Map(
+                oldTopicsArr.map((t) => [String(t.id), t]),
+              );
+              newTopicsArr.forEach((t) => {
+                const old = oldMap.get(String(t.id));
+                if (!old || JSON.stringify(old) !== JSON.stringify(t)) {
+                  topicsToSave.push({ topic: t, category });
+                }
+              });
+              oldTopicsArr.forEach((t) => {
+                if (
+                  !newTopicsArr.find((nt) => String(nt.id) === String(t.id))
+                ) {
+                  topicIdsToDelete.push({ id: String(t.id), category });
+                }
+              });
+            });
+
+            if (topicsToSave.length > 0 || topicIdsToDelete.length > 0) {
+              saveTopicsBulk(currentUser.uid!, topicsToSave, topicIdsToDelete);
+            }
+          },
+        );
+      }
+
       return newData;
     });
   };
@@ -826,6 +946,11 @@ const App: React.FC = () => {
     const newData = { ...data, expenses: newExpenses };
     setData(newData);
     storage.setItem("dps_data", JSON.stringify(newData));
+
+    if (currentUser?.uid) {
+      const { saveExpense } = await import("./services/supabase");
+      await saveExpense(currentUser.uid, expense, isDelete);
+    }
   };
 
   const undo = () => {
@@ -835,6 +960,7 @@ const App: React.FC = () => {
     setHistory((prev) => prev.slice(0, -1));
     setData(previous);
     storage.setItem("dps_data", JSON.stringify(previous));
+    if (currentUser?.uid) saveData(currentUser.uid, previous);
   };
 
   const redo = () => {
@@ -844,6 +970,7 @@ const App: React.FC = () => {
     setRedoStack((prev) => prev.slice(0, -1));
     setData(next);
     storage.setItem("dps_data", JSON.stringify(next));
+    if (currentUser?.uid) saveData(currentUser.uid, next);
   };
 
   useEffect(() => {

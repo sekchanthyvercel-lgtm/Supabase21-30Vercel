@@ -109,33 +109,33 @@
         scrollbar-width: none;
       }
 
-      /* Markdown Styles */
-      .markdown-body table {
+      /* Markdown & ContentEditable Table Styles */
+      .markdown-body table, [contenteditable="true"] table {
         border-collapse: collapse;
         width: 100%;
         margin-bottom: 1rem;
         background-color: transparent;
       }
-      .markdown-body th, .markdown-body td {
-        border: 1px solid #e2e8f0;
+      .markdown-body th, .markdown-body td, [contenteditable="true"] th, [contenteditable="true"] td {
+        border: 1px solid #cbd5e1; /* visible border */
         padding: 0.5rem 0.75rem;
         text-align: left;
       }
-      .markdown-body th {
+      .markdown-body th, [contenteditable="true"] th {
         background-color: #f8fafc;
         font-weight: 600;
         color: #334155;
       }
-      .markdown-body tr:nth-child(even) {
+      .markdown-body tr:nth-child(even), [contenteditable="true"] tr:nth-child(even) {
         background-color: #f8fafc;
       }
-      .markdown-body strong {
+      .markdown-body strong, [contenteditable="true"] strong {
         font-weight: bold;
       }
-      .markdown-body p {
+      .markdown-body p, [contenteditable="true"] p {
         margin-bottom: 1rem;
       }
-      .markdown-body a {
+      .markdown-body a, [contenteditable="true"] a {
         color: #2563eb;
         text-decoration: underline;
       }

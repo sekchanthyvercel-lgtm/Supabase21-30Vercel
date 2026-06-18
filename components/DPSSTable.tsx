@@ -151,6 +151,29 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
   const [pdfMargin, setPdfMargin] = useState(0.5);
   const [pdfPaperStyle, setPdfPaperStyle] = useState('none');
   const [showTableToolsMenu, setShowTableToolsMenu] = useState(false);
+
+  const toggleDropdown = (menuName: 'export' | 'tableTools' | 'more' | 'moreTools') => {
+    setShowExportMenu(menuName === 'export' ? !showExportMenu : false);
+    setShowTableToolsMenu(menuName === 'tableTools' ? !showTableToolsMenu : false);
+    setShowMoreMenu(menuName === 'more' ? !showMoreMenu : false);
+    setShowMoreTools(menuName === 'moreTools' ? !showMoreTools : false);
+  };
+
+  // Global click outside to dismiss menus
+  useEffect(() => {
+    const handleGlobalClick = (e: MouseEvent) => {
+      if ((e.target as HTMLElement).closest('.z-\\[200\\]') || (e.target as HTMLElement).closest('.z-\\[250\\]') || (e.target as HTMLElement).closest('button')) {
+        return; 
+      }
+      setShowExportMenu(false);
+      setShowTableToolsMenu(false);
+      setShowMoreMenu(false);
+      setShowMoreTools(false);
+    };
+    document.addEventListener('mousedown', handleGlobalClick);
+    return () => document.removeEventListener('mousedown', handleGlobalClick);
+  }, []);
+
   const [isToolbarHidden, setIsToolbarHidden] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     const saved = localStorage.getItem('gportal_dpss_sidebar_width');
@@ -2293,7 +2316,14 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
       emerald: { border: '#bbf7d0', bg: '#f0fdf4', title: '#047857', desc: '#064e3b', inner: '#bbf7d0' },
       rose: { border: '#fecdd3', bg: '#fff1f2', title: '#be123c', desc: '#881337', inner: '#fecdd3' },
       blue: { border: '#bfdbfe', bg: '#f0f7ff', title: '#1d4ed8', desc: '#1e3a8a', inner: '#bfdbfe' },
-      gold: { border: '#fef08a', bg: '#fefce8', title: '#a16207', desc: '#713f12', inner: '#fef08a' }
+      gold: { border: '#fef08a', bg: '#fefce8', title: '#a16207', desc: '#713f12', inner: '#fef08a' },
+      slate: { border: '#cbd5e1', bg: '#f8fafc', title: '#334155', desc: '#475569', inner: '#cbd5e1' },
+      indigo: { border: '#c7d2fe', bg: '#eef2ff', title: '#4338ca', desc: '#312e81', inner: '#c7d2fe' },
+      amber: { border: '#fde68a', bg: '#fffbeb', title: '#b45309', desc: '#78350f', inner: '#fde68a' },
+      sky: { border: '#bae6fd', bg: '#f0f9ff', title: '#0369a1', desc: '#0c4a6e', inner: '#bae6fd' },
+      teal: { border: '#99f6e4', bg: '#f0fdfa', title: '#0f766e', desc: '#115e59', inner: '#99f6e4' },
+      fuchsia: { border: '#f5d0fe', bg: '#fdf4ff', title: '#a21caf', desc: '#701a75', inner: '#f5d0fe' },
+      orange: { border: '#fed7aa', bg: '#fff7ed', title: '#c2410c', desc: '#7c2d12', inner: '#fed7aa' }
     };
     const c = configs[theme] || configs.violet;
 
@@ -2344,7 +2374,15 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
       emerald: { border: '#bbf7d0', bg: '#f0fdf4', title: '#047857', desc: '#064e3b', inner: '#86efac' },
       rose: { border: '#fecdd3', bg: '#fff1f2', title: '#be123c', desc: '#881337', inner: '#fda4af' },
       blue: { border: '#bfdbfe', bg: '#f0f7ff', title: '#1d4ed8', desc: '#1e3a8a', inner: '#93c5fd' },
-      slate: { border: '#cbd5e1', bg: '#f8fafc', title: '#334155', desc: '#475569', inner: '#cbd5e1' }
+      slate: { border: '#cbd5e1', bg: '#f8fafc', title: '#334155', desc: '#475569', inner: '#cbd5e1' },
+      violet: { border: '#ddd6fe', bg: '#f5f3ff', title: '#6d28d9', desc: '#4c1d95', inner: '#c4b5fd' },
+      gold: { border: '#fef08a', bg: '#fefce8', title: '#a16207', desc: '#713f12', inner: '#fde047' },
+      indigo: { border: '#c7d2fe', bg: '#eef2ff', title: '#4338ca', desc: '#312e81', inner: '#a5b4fc' },
+      amber: { border: '#fde68a', bg: '#fffbeb', title: '#b45309', desc: '#78350f', inner: '#fcd34d' },
+      sky: { border: '#bae6fd', bg: '#f0f9ff', title: '#0369a1', desc: '#0c4a6e', inner: '#7dd3fc' },
+      teal: { border: '#99f6e4', bg: '#f0fdfa', title: '#0f766e', desc: '#115e59', inner: '#5eead4' },
+      fuchsia: { border: '#f5d0fe', bg: '#fdf4ff', title: '#a21caf', desc: '#701a75', inner: '#f0abfc' },
+      orange: { border: '#fed7aa', bg: '#fff7ed', title: '#c2410c', desc: '#7c2d12', inner: '#fdba74' }
     };
     const c = configs[theme] || configs.emerald;
 
@@ -2973,6 +3011,96 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
               if (editorRef.current && selectedTopic) {
                 updateTopic(selectedTopic.id, { content: editorRef.current.innerHTML });
               }
+            }
+          }
+        }
+        
+        // Check if we are inside a Brainstorm Map
+        const brainstormBoard = activeEl?.closest('.brainstorm-card-wrapper') as HTMLElement | null;
+        if (brainstormBoard) {
+          e.preventDefault();
+          const gridContainer = brainstormBoard.querySelector('div[style*="display: grid"]') || brainstormBoard.querySelector('div[style*="display:grid"]');
+          if (gridContainer) {
+            const lastCard = gridContainer.lastElementChild as HTMLElement | null;
+            if (lastCard) {
+              const newCard = lastCard.cloneNode(true) as HTMLElement;
+              const boxEl = newCard.querySelector('.brainstorm-box') as HTMLElement | null;
+              if (boxEl) {
+                boxEl.innerHTML = 'Add insight...';
+              }
+              const titleEl = newCard.querySelector('div[style*="font-size: 11px"]') as HTMLElement | null;
+              if (titleEl) {
+                titleEl.innerText = 'New Insight / Consideration';
+              }
+              gridContainer.appendChild(newCard);
+              setTimeout(() => {
+                if (boxEl) {
+                  const range = document.createRange();
+                  range.selectNodeContents(boxEl);
+                  range.collapse(true);
+                  const sel = window.getSelection();
+                  sel?.removeAllRanges();
+                  sel?.addRange(range);
+                  boxEl.focus();
+                }
+              }, 10);
+              if (editorRef.current && selectedTopic) {
+                updateTopic(selectedTopic.id, { content: editorRef.current.innerHTML });
+              }
+            }
+          }
+        }
+        
+        // Check if we are inside a Pros & Cons Grid (which also has a grid column system)
+        const prosconsBoard = activeEl?.closest('.pros-cons-wrapper') as HTMLElement | null;
+        if (prosconsBoard) {
+          e.preventDefault();
+          const pGridContainer = prosconsBoard.querySelector('div[style*="display: grid"]') || prosconsBoard.querySelector('div[style*="display:grid"]');
+          if (pGridContainer) {
+            const currentBox = activeEl?.closest('.pros-box, .cons-box');
+            if (currentBox) {
+               // Clone the entire grid setup, wait, a grid column in Pros Cons is actually just 2 columns but with varying rows?
+               // Ah, wait. The pros cons is simply 2 columns of children! Wait, let's look at pros cons html.
+               const isChild = !!pGridContainer;
+               if (isChild) {
+                 const greenBox = pGridContainer.children[pGridContainer.children.length - 2];
+                 const redBox = pGridContainer.children[pGridContainer.children.length - 1];
+                 
+                 if (greenBox && redBox) {
+                   const newGreenBox = greenBox.cloneNode(true) as HTMLElement;
+                   const greenEl = newGreenBox.querySelector('.pros-box') as HTMLElement | null;
+                   if (greenEl) { greenEl.innerHTML = 'List positive aspect...'; }
+                   if (newGreenBox.querySelector('div[style*="font-size: 11px"]')) {
+                     (newGreenBox.querySelector('div[style*="font-size: 11px"]') as HTMLElement).innerText = 'ADDITIONAL PROS (+)';
+                   }
+                   
+                   const newRedBox = redBox.cloneNode(true) as HTMLElement;
+                   const redEl = newRedBox.querySelector('.cons-box') as HTMLElement | null;
+                   if (redEl) { redEl.innerHTML = 'List drawback...'; }
+                   if (newRedBox.querySelector('div[style*="font-size: 11px"]')) {
+                     (newRedBox.querySelector('div[style*="font-size: 11px"]') as HTMLElement).innerText = 'ADDITIONAL CONS (-)';
+                   }
+                   
+                   pGridContainer.appendChild(newGreenBox);
+                   pGridContainer.appendChild(newRedBox);
+                   
+                   setTimeout(() => {
+                     if (greenEl) {
+                       const range = document.createRange();
+                       range.selectNodeContents(greenEl);
+                       range.collapse(true);
+                       const sel = window.getSelection();
+                       sel?.removeAllRanges();
+                       sel?.addRange(range);
+                       greenEl.focus();
+                     }
+                   }, 10);
+                   
+                   if (editorRef.current && selectedTopic) {
+                     updateTopic(selectedTopic.id, { content: editorRef.current.innerHTML });
+                   }
+                 }
+               }
             }
           }
         }
@@ -4145,7 +4273,7 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
                     <div className="h-6 w-px bg-white/30 mx-1" />
 
                     <button 
-                      onClick={() => setShowMoreTools(!showMoreTools)}
+                      onClick={() => toggleDropdown('moreTools')}
                       className={`p-1.5 rounded-lg font-black text-[10px] uppercase transition-all flex items-center gap-1 ${showMoreTools ? 'bg-orange-500 text-white shadow-lg' : 'bg-white/40 text-slate-600 hover:bg-white/60'}`}
                     >
                       <Settings2 size={14} className={showMoreTools ? 'animate-spin-slow' : ''} />
@@ -4280,7 +4408,7 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
                         {/* Table Tools Dropdown */}
                         <div className="relative z-[200]">
                           <button 
-                            onClick={() => setShowTableToolsMenu(!showTableToolsMenu)}
+                            onClick={() => toggleDropdown('tableTools')}
                             className="flex items-center gap-1.5 px-2 py-1 bg-white/40 hover:bg-white text-slate-700 rounded-lg text-xs font-bold transition-all"
                             title="Table Tools"
                           >
@@ -4439,153 +4567,7 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
                       </button>
                       <div className="relative z-[200]">
                         <button 
-                          onClick={() => setShowMoreMenu(!showMoreMenu)}
-                          className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-lg text-xs font-bold shadow-sm transition-all font-sans"
-                          title="More rich layouts & templates"
-                        >
-                          <MoreHorizontal size={14} />
-                          More
-                          <ChevronDown size={12} className={`transition-transform duration-200 ${showMoreMenu ? 'rotate-180' : ''}`} />
-                        </button>
-                        
-                        {showMoreMenu && (
-                          <>
-                            {/* Backdrop overlay only visible on touch/mobile viewports to dismiss */}
-                            <div className="md:hidden fixed inset-0 bg-slate-950/20 backdrop-blur-sm z-[999]" onClick={() => setShowMoreMenu(false)} />
-                            
-                            <div className="fixed md:absolute inset-x-4 bottom-4 md:bottom-auto md:inset-x-auto md:right-0 md:top-full md:mt-2 z-[1000] md:w-[225px] bg-white rounded-2xl shadow-2xl border border-slate-200 p-4 flex flex-col gap-4 animate-in slide-in-from-bottom-5 md:slide-in-from-top-2 duration-150 max-h-[60vh] md:max-h-[350px] overflow-y-auto custom-scrollbar">
-                            <div className="flex items-center justify-between px-2 py-1.5 bg-indigo-50/50 dark:bg-indigo-950/25 rounded-md gap-2 select-none">
-                              <span className="text-[9px] font-black uppercase text-indigo-700 dark:text-indigo-400 tracking-wider flex items-center gap-1">
-                                <Wand2 size={11} className="text-indigo-500 animate-pulse" /> Smart Show
-                              </span>
-                              <input 
-                                type="checkbox"
-                                checked={sidebarFilter === 'smart'}
-                                onChange={(e) => setSidebarFilter(e.target.checked ? 'smart' : 'files')}
-                                className="w-3.5 h-3.5 rounded text-indigo-600 focus:ring-indigo-400 border-slate-300 cursor-pointer"
-                              />
-                            </div>
-                            <div>
-                              <div className="text-[10px] font-black uppercase text-slate-400 tracking-wider mb-2 flex items-center gap-1.5">
-                                <Layout size={12} className="text-blue-500" />
-                                Insert Synthesis Card
-                              </div>
-                              <div className="grid grid-cols-5 gap-1.5">
-                                {[
-                                  { key: 'blue', color: 'bg-blue-500', border: 'border-blue-200', bg: 'bg-blue-50', name: 'Blue' },
-                                  { key: 'emerald', color: 'bg-emerald-500', border: 'border-emerald-200', bg: 'bg-emerald-50', name: 'Emerald' },
-                                  { key: 'rose', color: 'bg-rose-500', border: 'border-rose-200', bg: 'bg-rose-50', name: 'Rose' },
-                                  { key: 'gold', color: 'bg-yellow-500', border: 'border-yellow-200', bg: 'bg-yellow-50', name: 'Gold' },
-                                  { key: 'violet', color: 'bg-purple-500', border: 'border-purple-200', bg: 'bg-purple-50', name: 'Violet' },
-                                  { key: 'orange', color: 'bg-orange-500', border: 'border-orange-200', bg: 'bg-orange-50', name: 'Orange' },
-                                  { key: 'teal', color: 'bg-teal-500', border: 'border-teal-200', bg: 'bg-teal-50', name: 'Teal' },
-                                  { key: 'fuchsia', color: 'bg-fuchsia-500', border: 'border-fuchsia-200', bg: 'bg-fuchsia-50', name: 'Fuchsia' },
-                                  { key: 'sky', color: 'bg-sky-500', border: 'border-sky-200', bg: 'bg-sky-50', name: 'Sky' },
-                                  { key: 'slate', color: 'bg-slate-500', border: 'border-slate-300', bg: 'bg-slate-50', name: 'Slate' }
-                                ].map((theme) => (
-                                  <button 
-                                    key={theme.key}
-                                    onClick={() => { insertSynthesisCard(theme.key); setShowMoreMenu(false); }}
-                                    className={`w-7 h-7 rounded-full border ${theme.border} ${theme.bg} flex items-center justify-center hover:scale-110 active:scale-95 transition-all animate-in zoom-in-50 duration-200`}
-                                    title={`${theme.name} Synthesis Card`}
-                                  >
-                                    <span className={`w-3 h-3 rounded-full ${theme.color}`} />
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-
-                            <div className="h-px bg-slate-100" />
-
-                            <div>
-                              <div className="text-[10px] font-black uppercase text-slate-400 tracking-wider mb-2 flex items-center gap-1.5">
-                                <CheckSquare size={12} className="text-slate-600" />
-                                Insert Q&A Board
-                              </div>
-                              <div className="grid grid-cols-5 gap-1.5">
-                                {[
-                                  { key: 'slate', color: 'bg-slate-500', border: 'border-slate-200', bg: 'bg-slate-50', name: 'Slate' },
-                                  { key: 'emerald', color: 'bg-emerald-500', border: 'border-emerald-200', bg: 'bg-emerald-50', name: 'Emerald' },
-                                  { key: 'indigo', color: 'bg-indigo-500', border: 'border-indigo-200', bg: 'bg-indigo-50', name: 'Indigo' },
-                                  { key: 'amber', color: 'bg-amber-500', border: 'border-amber-200', bg: 'bg-amber-50', name: 'Amber' },
-                                  { key: 'purple', color: 'bg-purple-500', border: 'border-purple-200', bg: 'bg-purple-50', name: 'Purple' },
-                                  { key: 'rose', color: 'bg-rose-500', border: 'border-rose-200', bg: 'bg-rose-50', name: 'Rose' },
-                                  { key: 'sky', color: 'bg-sky-500', border: 'border-sky-200', bg: 'bg-sky-50', name: 'Sky' },
-                                  { key: 'teal', color: 'bg-teal-500', border: 'border-teal-200', bg: 'bg-teal-50', name: 'Teal' },
-                                  { key: 'orange', color: 'bg-orange-500', border: 'border-orange-200', bg: 'bg-orange-50', name: 'Orange' },
-                                  { key: 'cyan', color: 'bg-cyan-500', border: 'border-cyan-200', bg: 'bg-cyan-50', name: 'Cyan' }
-                                ].map((theme) => (
-                                  <button 
-                                    key={theme.key}
-                                    onClick={() => { insertQABoard(theme.key); setShowMoreMenu(false); }}
-                                    className={`w-7 h-7 rounded-full border ${theme.border} ${theme.bg} flex items-center justify-center hover:scale-110 active:scale-95 transition-all animate-in zoom-in-50 duration-200`}
-                                    title={`${theme.name} Q&A Board`}
-                                  >
-                                    <span className={`w-3 h-3 rounded-full ${theme.color}`} />
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-
-                            <div className="h-px bg-slate-100" />
-
-                            <div>
-                              <div className="text-[10px] font-black uppercase text-slate-400 tracking-wider mb-2 flex items-center gap-1.5">
-                                <Zap size={12} className="text-purple-500" />
-                                Insert Brainstorm Map
-                              </div>
-                              <div className="grid grid-cols-5 gap-1.5">
-                                {[
-                                  { key: 'violet', color: 'bg-purple-500', border: 'border-purple-200', bg: 'bg-purple-50', name: 'Violet' },
-                                  { key: 'emerald', color: 'bg-emerald-500', border: 'border-emerald-200', bg: 'bg-emerald-50', name: 'Emerald' },
-                                  { key: 'rose', color: 'bg-rose-500', border: 'border-rose-200', bg: 'bg-rose-50', name: 'Rose' },
-                                  { key: 'blue', color: 'bg-blue-500', border: 'border-blue-200', bg: 'bg-blue-50', name: 'Blue' },
-                                  { key: 'gold', color: 'bg-yellow-500', border: 'border-yellow-200', bg: 'bg-yellow-50', name: 'Gold' }
-                                ].map((theme) => (
-                                  <button 
-                                    key={theme.key}
-                                    onClick={() => { insertBrainstormCard(theme.key); setShowMoreMenu(false); }}
-                                    className={`w-7 h-7 rounded-full border ${theme.border} ${theme.bg} flex items-center justify-center hover:scale-110 active:scale-95 transition-all animate-in zoom-in-50 duration-200`}
-                                    title={`${theme.name} Brainstorm Map`}
-                                  >
-                                    <span className={`w-3 h-3 rounded-full ${theme.color}`} />
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-
-                            <div className="h-px bg-slate-100" />
-
-                            <div>
-                              <div className="text-[10px] font-black uppercase text-slate-400 tracking-wider mb-2 flex items-center gap-1.5">
-                                <Columns size={12} className="text-emerald-500" />
-                                Insert Pros & Cons Grid
-                              </div>
-                              <div className="grid grid-cols-5 gap-1.5">
-                                {[
-                                  { key: 'emerald', color: 'bg-emerald-500', border: 'border-emerald-200', bg: 'bg-emerald-50', name: 'Emerald' },
-                                  { key: 'rose', color: 'bg-rose-500', border: 'border-rose-200', bg: 'bg-rose-50', name: 'Rose' },
-                                  { key: 'blue', color: 'bg-blue-500', border: 'border-blue-200', bg: 'bg-blue-50', name: 'Blue' },
-                                  { key: 'slate', color: 'bg-slate-500', border: 'border-slate-300', bg: 'bg-slate-50', name: 'Slate' }
-                                ].map((theme) => (
-                                  <button 
-                                    key={theme.key}
-                                    onClick={() => { insertProsConsCard(theme.key); setShowMoreMenu(false); }}
-                                    className={`w-7 h-7 rounded-full border ${theme.border} ${theme.bg} flex items-center justify-center hover:scale-110 active:scale-95 transition-all animate-in zoom-in-50 duration-200`}
-                                    title={`${theme.name} Pros & Cons Grid`}
-                                  >
-                                    <span className={`w-3 h-3 rounded-full ${theme.color}`} />
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                          </div>
-                          </>
-                        )}
-                      </div>
-                      <div className="relative z-[200]">
-                        <button 
-                          onClick={() => setShowExportMenu(!showExportMenu)}
+                          onClick={() => toggleDropdown('export')}
                           className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-lg text-xs font-bold shadow-sm transition-all font-sans"
                           title="Export notes"
                         >
@@ -4619,7 +4601,7 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
                       {/* Table Tools Dropdown */}
                       <div className="relative z-[200]">
                         <button 
-                          onClick={() => setShowTableToolsMenu(!showTableToolsMenu)}
+                          onClick={() => toggleDropdown('tableTools')}
                           className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-lg text-xs font-bold shadow-sm transition-all font-sans"
                           title="Table Tools"
                         >
@@ -4700,7 +4682,7 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
                       {/* MORE Tools Dropdown (Includes AI Enhance, Upload File, Synthesis Cards, Q&A Board) */}
                       <div className="relative z-[200]">
                         <button 
-                          onClick={() => setShowMoreMenu(!showMoreMenu)}
+                          onClick={() => toggleDropdown('more')}
                           className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-lg text-xs font-bold shadow-sm transition-all font-sans"
                           title="More Actions & Layouts"
                         >
@@ -4830,11 +4812,18 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
                               </div>
                               <div className="grid grid-cols-5 gap-1.5">
                                 {[
-                                  { key: 'violet', color: 'bg-purple-500', border: 'border-purple-200', bg: 'bg-purple-50', name: 'Violet' },
+                                  { key: 'blue', color: 'bg-blue-500', border: 'border-blue-200', bg: 'bg-blue-50', name: 'Blue' },
                                   { key: 'emerald', color: 'bg-emerald-500', border: 'border-emerald-200', bg: 'bg-emerald-50', name: 'Emerald' },
                                   { key: 'rose', color: 'bg-rose-500', border: 'border-rose-200', bg: 'bg-rose-50', name: 'Rose' },
-                                  { key: 'blue', color: 'bg-blue-500', border: 'border-blue-200', bg: 'bg-blue-50', name: 'Blue' },
-                                  { key: 'gold', color: 'bg-yellow-500', border: 'border-yellow-200', bg: 'bg-yellow-50', name: 'Gold' }
+                                  { key: 'gold', color: 'bg-yellow-400', border: 'border-yellow-200', bg: 'bg-yellow-50', name: 'Gold' },
+                                  { key: 'violet', color: 'bg-purple-500', border: 'border-purple-200', bg: 'bg-purple-50', name: 'Violet' },
+                                  { key: 'orange', color: 'bg-orange-500', border: 'border-orange-200', bg: 'bg-orange-50', name: 'Orange' },
+                                  { key: 'teal', color: 'bg-teal-500', border: 'border-teal-200', bg: 'bg-teal-50', name: 'Teal' },
+                                  { key: 'fuchsia', color: 'bg-fuchsia-500', border: 'border-fuchsia-200', bg: 'bg-fuchsia-50', name: 'Fuchsia' },
+                                  { key: 'sky', color: 'bg-sky-500', border: 'border-sky-200', bg: 'bg-sky-50', name: 'Sky' },
+                                  { key: 'slate', color: 'bg-slate-500', border: 'border-slate-300', bg: 'bg-slate-50', name: 'Slate' },
+                                  { key: 'indigo', color: 'bg-indigo-500', border: 'border-indigo-200', bg: 'bg-indigo-50', name: 'Indigo' },
+                                  { key: 'amber', color: 'bg-amber-500', border: 'border-amber-200', bg: 'bg-amber-50', name: 'Amber' }
                                 ].map((theme) => (
                                   <button 
                                     key={theme.key}
@@ -4860,7 +4849,15 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
                                   { key: 'emerald', color: 'bg-emerald-500', border: 'border-emerald-200', bg: 'bg-emerald-50', name: 'Emerald' },
                                   { key: 'rose', color: 'bg-rose-500', border: 'border-rose-200', bg: 'bg-rose-50', name: 'Rose' },
                                   { key: 'blue', color: 'bg-blue-500', border: 'border-blue-200', bg: 'bg-blue-50', name: 'Blue' },
-                                  { key: 'slate', color: 'bg-slate-500', border: 'border-slate-300', bg: 'bg-slate-50', name: 'Slate' }
+                                  { key: 'slate', color: 'bg-slate-500', border: 'border-slate-300', bg: 'bg-slate-50', name: 'Slate' },
+                                  { key: 'violet', color: 'bg-purple-500', border: 'border-purple-200', bg: 'bg-purple-50', name: 'Violet' },
+                                  { key: 'gold', color: 'bg-yellow-400', border: 'border-yellow-200', bg: 'bg-yellow-50', name: 'Gold' },
+                                  { key: 'orange', color: 'bg-orange-500', border: 'border-orange-200', bg: 'bg-orange-50', name: 'Orange' },
+                                  { key: 'teal', color: 'bg-teal-500', border: 'border-teal-200', bg: 'bg-teal-50', name: 'Teal' },
+                                  { key: 'fuchsia', color: 'bg-fuchsia-500', border: 'border-fuchsia-200', bg: 'bg-fuchsia-50', name: 'Fuchsia' },
+                                  { key: 'sky', color: 'bg-sky-500', border: 'border-sky-200', bg: 'bg-sky-50', name: 'Sky' },
+                                  { key: 'indigo', color: 'bg-indigo-500', border: 'border-indigo-200', bg: 'bg-indigo-50', name: 'Indigo' },
+                                  { key: 'amber', color: 'bg-amber-500', border: 'border-amber-200', bg: 'bg-amber-50', name: 'Amber' }
                                 ].map((theme) => (
                                   <button 
                                     key={theme.key}
@@ -5128,12 +5125,13 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
                       }
                       
                       .editor-content table {
-                        border-collapse: collapse;
+                        border-collapse: collapse !important;
                         width: 100%;
                       }
 
                       .editor-content th, 
                       .editor-content td {
+                        border: 1.5px solid ${editorBorderColor} !important;
                         padding: 12px 14px;
                       }
                       
@@ -5223,6 +5221,17 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
                         color: #f97316 !important;
                         text-decoration: underline !important;
                         font-weight: 700 !important;
+                      }
+
+                      /* Restore borders for pasted tables! Tailwind removes all borders. */
+                      .editor-content table {
+                        border-collapse: collapse !important;
+                        width: 100%;
+                      }
+                      .editor-content table,
+                      .editor-content th,
+                      .editor-content td {
+                        border: 1px solid #cbd5e1;
                       }
 
                       .editor-content ul {

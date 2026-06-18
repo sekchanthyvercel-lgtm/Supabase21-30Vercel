@@ -33,6 +33,14 @@ export const SelfLearningTable: React.FC<SelfLearningTableProps> = ({ data, onUp
   const [pdfMargin, setPdfMargin] = useState(0.5);
   const [pdfPaperStyle, setPdfPaperStyle] = useState('none');
   const [showTableToolsMenu, setShowTableToolsMenu] = useState(false);
+
+  const toggleDropdown = (menuName: 'export' | 'tableTools' | 'more' | 'moreTools') => {
+    setShowExportMenu(menuName === 'export' ? !showExportMenu : false);
+    setShowTableToolsMenu(menuName === 'tableTools' ? !showTableToolsMenu : false);
+    setShowMoreMenu(menuName === 'more' ? !showMoreMenu : false);
+    setShowMoreTools(menuName === 'moreTools' ? !showMoreTools : false);
+  };
+
   const [isToolbarHidden, setIsToolbarHidden] = useState(() => {
     return localStorage.getItem('self_learning_toolbar_hidden') === 'true';
   });
@@ -362,6 +370,22 @@ export const SelfLearningTable: React.FC<SelfLearningTableProps> = ({ data, onUp
   useEffect(() => {
     localStorage.setItem('self_learning_plain_light', String(forceLightBg));
   }, [forceLightBg]);
+
+  // Global click outside to dismiss menus
+  useEffect(() => {
+    const handleGlobalClick = (e: MouseEvent) => {
+      // If clicking inside the dropdown button or menu itself, do nothing
+      if ((e.target as HTMLElement).closest('.z-\\[200\\]') || (e.target as HTMLElement).closest('.z-\\[250\\]') || (e.target as HTMLElement).closest('button')) {
+        return; 
+      }
+      setShowExportMenu(false);
+      setShowTableToolsMenu(false);
+      setShowMoreMenu(false);
+      setShowMoreTools(false);
+    };
+    document.addEventListener('mousedown', handleGlobalClick);
+    return () => document.removeEventListener('mousedown', handleGlobalClick);
+  }, []);
 
   useEffect(() => {
     if (topics.length > 0) {
@@ -2295,7 +2319,14 @@ export const SelfLearningTable: React.FC<SelfLearningTableProps> = ({ data, onUp
       emerald: { border: '#bbf7d0', bg: '#f0fdf4', title: '#047857', desc: '#064e3b', inner: '#bbf7d0' },
       rose: { border: '#fecdd3', bg: '#fff1f2', title: '#be123c', desc: '#881337', inner: '#fecdd3' },
       blue: { border: '#bfdbfe', bg: '#f0f7ff', title: '#1d4ed8', desc: '#1e3a8a', inner: '#bfdbfe' },
-      gold: { border: '#fef08a', bg: '#fefce8', title: '#a16207', desc: '#713f12', inner: '#fef08a' }
+      gold: { border: '#fef08a', bg: '#fefce8', title: '#a16207', desc: '#713f12', inner: '#fef08a' },
+      slate: { border: '#cbd5e1', bg: '#f8fafc', title: '#334155', desc: '#475569', inner: '#cbd5e1' },
+      orange: { border: '#fed7aa', bg: '#fff7ed', title: '#c2410c', desc: '#7c2d12', inner: '#fed7aa' },
+      cyan: { border: '#a5f3fc', bg: '#ecfeff', title: '#0e7490', desc: '#164e63', inner: '#a5f3fc' },
+      fuchsia: { border: '#f5d0fe', bg: '#fdf4ff', title: '#a21caf', desc: '#4a044e', inner: '#f5d0fe' },
+      lime: { border: '#d9f99d', bg: '#f7fee7', title: '#4d7c0f', desc: '#3f6212', inner: '#d9f99d' },
+      indigo: { border: '#c7d2fe', bg: '#eef2ff', title: '#4338ca', desc: '#312e81', inner: '#c7d2fe' },
+      amber: { border: '#fde68a', bg: '#fffbeb', title: '#b45309', desc: '#78350f', inner: '#fde68a' }
     };
     const c = configs[theme] || configs.violet;
 
@@ -2343,10 +2374,18 @@ export const SelfLearningTable: React.FC<SelfLearningTableProps> = ({ data, onUp
   const insertProsConsCard = (theme = 'emerald') => {
     if (!selectedTopic) return;
     const configs: Record<string, { border: string; bg: string; title: string; desc: string; inner: string }> = {
+      violet: { border: '#ddd6fe', bg: '#f5f3ff', title: '#6d28d9', desc: '#4c1d95', inner: '#c4b5fd' },
       emerald: { border: '#bbf7d0', bg: '#f0fdf4', title: '#047857', desc: '#064e3b', inner: '#86efac' },
       rose: { border: '#fecdd3', bg: '#fff1f2', title: '#be123c', desc: '#881337', inner: '#fda4af' },
       blue: { border: '#bfdbfe', bg: '#f0f7ff', title: '#1d4ed8', desc: '#1e3a8a', inner: '#93c5fd' },
-      slate: { border: '#cbd5e1', bg: '#f8fafc', title: '#334155', desc: '#475569', inner: '#cbd5e1' }
+      gold: { border: '#fef08a', bg: '#fefce8', title: '#a16207', desc: '#713f12', inner: '#fde047' },
+      slate: { border: '#cbd5e1', bg: '#f8fafc', title: '#334155', desc: '#475569', inner: '#cbd5e1' },
+      orange: { border: '#fed7aa', bg: '#fff7ed', title: '#c2410c', desc: '#7c2d12', inner: '#fdba74' },
+      cyan: { border: '#a5f3fc', bg: '#ecfeff', title: '#0e7490', desc: '#164e63', inner: '#67e8f9' },
+      fuchsia: { border: '#f5d0fe', bg: '#fdf4ff', title: '#a21caf', desc: '#4a044e', inner: '#f0abfc' },
+      lime: { border: '#d9f99d', bg: '#f7fee7', title: '#4d7c0f', desc: '#3f6212', inner: '#bef264' },
+      indigo: { border: '#c7d2fe', bg: '#eef2ff', title: '#4338ca', desc: '#312e81', inner: '#a5b4fc' },
+      amber: { border: '#fde68a', bg: '#fffbeb', title: '#b45309', desc: '#78350f', inner: '#fcd34d' }
     };
     const c = configs[theme] || configs.emerald;
 
@@ -2522,9 +2561,9 @@ export const SelfLearningTable: React.FC<SelfLearningTableProps> = ({ data, onUp
     try {
         let promptText = '';
         if (isSelectionMode) {
-          promptText = `Enhance ONLY this selected part of the note. Improve clarity, fix spelling/grammar, structure cleanly, and expand slightly if helpful. Return the improved version as HTML formatted snippet. Output ONLY valid HTML formatted text without any markdown or code block wrappers. CRITICAL: Output ONLY the raw content elements. Do NOT wrap the output in a centering or max-width container, card, or decorative wrapper. Selected text: ${selectedText}`;
+          promptText = `Enhance ONLY this selected part of the note. Improve clarity, fix spelling/grammar, structure cleanly, and expand slightly if helpful. Return the improved version as HTML formatted snippet. Output ONLY valid HTML formatted text without any markdown wrappers. CRITICAL: Output ONLY the raw content elements. Do NOT wrap the output in a centering container or card. DO NOT use emojis (like ⭐, ✨) as bullet points. Use standard HTML <ul> and <li>. Selected text: ${selectedText}`;
         } else {
-          promptText = `Enhance this note. Improve structure, fix grammar, and expand slightly if it helps clarity. Return HTML formatted string only. CRITICAL: Output ONLY the raw content elements. Do NOT wrap the output in a centering or max-width container, card, or decorative wrapper. Current content: ${selectedTopic.content}`;
+          promptText = `Enhance this note. Improve structure, fix grammar, and expand slightly if it helps clarity. Return HTML formatted string only. CRITICAL: Output ONLY the raw content elements. Do NOT wrap the output in a centering container or card. DO NOT use emojis (like ⭐, ✨) as bullet points. Use standard HTML <ul> and <li>. Current content: ${selectedTopic.content}`;
         }
 
         const result = await callNeuralEngine(
@@ -3048,6 +3087,94 @@ export const SelfLearningTable: React.FC<SelfLearningTableProps> = ({ data, onUp
               if (editorRef.current && selectedTopic) {
                 updateTopic(selectedTopic.id, { content: editorRef.current.innerHTML });
               }
+            }
+          }
+        }
+        
+        // Check if we are inside a Brainstorm Map
+        const brainstormBoard = activeEl?.closest('.brainstorm-card-wrapper') as HTMLElement | null;
+        if (brainstormBoard) {
+          e.preventDefault();
+          const gridContainer = brainstormBoard.querySelector('div[style*="display: grid"]') || brainstormBoard.querySelector('div[style*="display:grid"]');
+          if (gridContainer) {
+            const lastCard = gridContainer.lastElementChild as HTMLElement | null;
+            if (lastCard) {
+              const newCard = lastCard.cloneNode(true) as HTMLElement;
+              const boxEl = newCard.querySelector('.brainstorm-box') as HTMLElement | null;
+              if (boxEl) {
+                boxEl.innerHTML = 'Add insight...';
+              }
+              const titleEl = newCard.querySelector('div[style*="font-size: 11px"]') as HTMLElement | null;
+              if (titleEl) {
+                titleEl.innerText = 'New Insight / Consideration';
+              }
+              gridContainer.appendChild(newCard);
+              setTimeout(() => {
+                if (boxEl) {
+                  const range = document.createRange();
+                  range.selectNodeContents(boxEl);
+                  range.collapse(true);
+                  const sel = window.getSelection();
+                  sel?.removeAllRanges();
+                  sel?.addRange(range);
+                  boxEl.focus();
+                }
+              }, 10);
+              if (editorRef.current && selectedTopic) {
+                updateTopic(selectedTopic.id, { content: editorRef.current.innerHTML });
+              }
+            }
+          }
+        }
+        
+        // Check if we are inside a Pros & Cons Grid (which also has a grid column system)
+        const prosconsBoard = activeEl?.closest('.pros-cons-wrapper') as HTMLElement | null;
+        if (prosconsBoard) {
+          e.preventDefault();
+          const pGridContainer = prosconsBoard.querySelector('div[style*="display: grid"]') || prosconsBoard.querySelector('div[style*="display:grid"]');
+          if (pGridContainer) {
+            const currentBox = activeEl?.closest('.pros-box, .cons-box');
+            if (currentBox) {
+               const isChild = !!pGridContainer;
+               if (isChild) {
+                 const greenBox = pGridContainer.children[pGridContainer.children.length - 2];
+                 const redBox = pGridContainer.children[pGridContainer.children.length - 1];
+                 
+                 if (greenBox && redBox) {
+                   const newGreenBox = greenBox.cloneNode(true) as HTMLElement;
+                   const greenEl = newGreenBox.querySelector('.pros-box') as HTMLElement | null;
+                   if (greenEl) { greenEl.innerHTML = 'List positive aspect...'; }
+                   if (newGreenBox.querySelector('div[style*="font-size: 11px"]')) {
+                     (newGreenBox.querySelector('div[style*="font-size: 11px"]') as HTMLElement).innerText = 'ADDITIONAL PROS (+)';
+                   }
+                   
+                   const newRedBox = redBox.cloneNode(true) as HTMLElement;
+                   const redEl = newRedBox.querySelector('.cons-box') as HTMLElement | null;
+                   if (redEl) { redEl.innerHTML = 'List drawback...'; }
+                   if (newRedBox.querySelector('div[style*="font-size: 11px"]')) {
+                     (newRedBox.querySelector('div[style*="font-size: 11px"]') as HTMLElement).innerText = 'ADDITIONAL CONS (-)';
+                   }
+                   
+                   pGridContainer.appendChild(newGreenBox);
+                   pGridContainer.appendChild(newRedBox);
+                   
+                   setTimeout(() => {
+                     if (greenEl) {
+                       const range = document.createRange();
+                       range.selectNodeContents(greenEl);
+                       range.collapse(true);
+                       const sel = window.getSelection();
+                       sel?.removeAllRanges();
+                       sel?.addRange(range);
+                       greenEl.focus();
+                     }
+                   }, 10);
+                   
+                   if (editorRef.current && selectedTopic) {
+                     updateTopic(selectedTopic.id, { content: editorRef.current.innerHTML });
+                   }
+                 }
+               }
             }
           }
         }
@@ -4695,7 +4822,7 @@ export const SelfLearningTable: React.FC<SelfLearningTableProps> = ({ data, onUp
                     <div className="h-6 w-px bg-white/30 mx-1" />
 
                     <button 
-                      onClick={() => setShowMoreTools(!showMoreTools)}
+                      onClick={() => toggleDropdown('moreTools')}
                       className={`p-1.5 rounded-lg font-black text-[10px] uppercase transition-all flex items-center gap-1 ${showMoreTools ? 'bg-emerald-500 text-white shadow-lg' : 'bg-white/40 text-slate-600 hover:bg-white/60'}`}
                     >
                       <Settings2 size={14} className={showMoreTools ? 'animate-spin-slow' : ''} />
@@ -4874,7 +5001,7 @@ export const SelfLearningTable: React.FC<SelfLearningTableProps> = ({ data, onUp
 
                         <div className="relative z-[200]">
                           <button 
-                            onClick={() => setShowExportMenu(!showExportMenu)}
+                            onClick={() => toggleDropdown('export')}
                             className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-lg text-xs font-bold shadow-sm transition-all font-sans"
                             title="Export notes"
                           >
@@ -4906,9 +5033,10 @@ export const SelfLearningTable: React.FC<SelfLearningTableProps> = ({ data, onUp
                         </div>
 
                         {/* Table Tools Dropdown */}
-                        <div className="relative z-[200]">
-                          <button 
-                            onClick={() => setShowTableToolsMenu(!showTableToolsMenu)}
+                        {activeTableCell && (
+                          <div className="relative z-[200]">
+                            <button 
+                              onClick={() => toggleDropdown('tableTools')}
                             className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-lg text-xs font-bold shadow-sm transition-all font-sans"
                             title="Table Tools"
                           >
@@ -4919,7 +5047,6 @@ export const SelfLearningTable: React.FC<SelfLearningTableProps> = ({ data, onUp
                           
                           {showTableToolsMenu && (
                             <div className="absolute right-0 top-full mt-2 z-[250] w-56 bg-white rounded-2xl shadow-2xl border border-slate-200 p-2.5 flex flex-col gap-1.5 animate-in slide-in-from-top-2 duration-150">
-                              {activeTableCell ? (
                                 <>
                                   <div className="px-2 py-1 text-[10px] font-black text-slate-400 uppercase tracking-wider">Word-Style Controls</div>
                                   <div className="grid grid-cols-2 gap-1">
@@ -4976,15 +5103,10 @@ export const SelfLearningTable: React.FC<SelfLearningTableProps> = ({ data, onUp
                                     </button>
                                   </div>
                                 </>
-                              ) : (
-                                <div className="p-3 text-center text-xs text-slate-500 font-bold leading-relaxed">
-                                  <Grid3X3 size={20} className="mx-auto mb-2 text-slate-400" />
-                                  💡 Click inside any table first to add/delete rows & columns!
-                                </div>
-                              )}
                             </div>
                           )}
                         </div>
+                        )}
 
                         {/* Lock / Unlock Resizing Column Switch */}
                         <button
@@ -5017,7 +5139,7 @@ export const SelfLearningTable: React.FC<SelfLearningTableProps> = ({ data, onUp
                         {/* MORE Tools Dropdown (Includes AI Tutor, AI Enhance, Upload File, Synthesis Cards, Q&A Board) */}
                         <div className="relative z-[200]">
                           <button 
-                            onClick={() => setShowMoreMenu(!showMoreMenu)}
+                            onClick={() => toggleDropdown('more')}
                             className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-lg text-xs font-bold shadow-sm transition-all font-sans"
                             title="More Actions & Layouts"
                           >
@@ -5154,13 +5276,20 @@ export const SelfLearningTable: React.FC<SelfLearningTableProps> = ({ data, onUp
                                   <Zap size={12} className="text-purple-500" />
                                   Insert Brainstorm Map
                                 </div>
-                                <div className="grid grid-cols-5 gap-1.5">
+                                <div className="grid grid-cols-6 gap-1.5">
                                   {[
                                     { key: 'violet', color: 'bg-purple-500', border: 'border-purple-200', bg: 'bg-purple-50', name: 'Violet' },
                                     { key: 'emerald', color: 'bg-emerald-500', border: 'border-emerald-200', bg: 'bg-emerald-50', name: 'Emerald' },
                                     { key: 'rose', color: 'bg-rose-500', border: 'border-rose-200', bg: 'bg-rose-50', name: 'Rose' },
                                     { key: 'blue', color: 'bg-blue-500', border: 'border-blue-200', bg: 'bg-blue-50', name: 'Blue' },
-                                    { key: 'gold', color: 'bg-yellow-500', border: 'border-yellow-200', bg: 'bg-yellow-50', name: 'Gold' }
+                                    { key: 'gold', color: 'bg-yellow-500', border: 'border-yellow-200', bg: 'bg-yellow-50', name: 'Gold' },
+                                    { key: 'slate', color: 'bg-slate-500', border: 'border-slate-300', bg: 'bg-slate-50', name: 'Slate' },
+                                    { key: 'orange', color: 'bg-orange-500', border: 'border-orange-200', bg: 'bg-orange-50', name: 'Orange' },
+                                    { key: 'cyan', color: 'bg-cyan-500', border: 'border-cyan-200', bg: 'bg-cyan-50', name: 'Cyan' },
+                                    { key: 'fuchsia', color: 'bg-fuchsia-500', border: 'border-fuchsia-200', bg: 'bg-fuchsia-50', name: 'Fuchsia' },
+                                    { key: 'lime', color: 'bg-lime-500', border: 'border-lime-200', bg: 'bg-lime-50', name: 'Lime' },
+                                    { key: 'indigo', color: 'bg-indigo-500', border: 'border-indigo-200', bg: 'bg-indigo-50', name: 'Indigo' },
+                                    { key: 'amber', color: 'bg-amber-500', border: 'border-amber-200', bg: 'bg-amber-50', name: 'Amber' }
                                   ].map((theme) => (
                                     <button 
                                       key={theme.key}
@@ -5181,12 +5310,20 @@ export const SelfLearningTable: React.FC<SelfLearningTableProps> = ({ data, onUp
                                   <Columns size={12} className="text-emerald-500" />
                                   Insert Pros & Cons Grid
                                 </div>
-                                <div className="grid grid-cols-5 gap-1.5">
+                                <div className="grid grid-cols-6 gap-1.5">
                                   {[
+                                    { key: 'violet', color: 'bg-purple-500', border: 'border-purple-200', bg: 'bg-purple-50', name: 'Violet' },
                                     { key: 'emerald', color: 'bg-emerald-500', border: 'border-emerald-200', bg: 'bg-emerald-50', name: 'Emerald' },
                                     { key: 'rose', color: 'bg-rose-500', border: 'border-rose-200', bg: 'bg-rose-50', name: 'Rose' },
                                     { key: 'blue', color: 'bg-blue-500', border: 'border-blue-200', bg: 'bg-blue-50', name: 'Blue' },
-                                    { key: 'slate', color: 'bg-slate-500', border: 'border-slate-300', bg: 'bg-slate-50', name: 'Slate' }
+                                    { key: 'gold', color: 'bg-yellow-500', border: 'border-yellow-200', bg: 'bg-yellow-50', name: 'Gold' },
+                                    { key: 'slate', color: 'bg-slate-500', border: 'border-slate-300', bg: 'bg-slate-50', name: 'Slate' },
+                                    { key: 'orange', color: 'bg-orange-500', border: 'border-orange-200', bg: 'bg-orange-50', name: 'Orange' },
+                                    { key: 'cyan', color: 'bg-cyan-500', border: 'border-cyan-200', bg: 'bg-cyan-50', name: 'Cyan' },
+                                    { key: 'fuchsia', color: 'bg-fuchsia-500', border: 'border-fuchsia-200', bg: 'bg-fuchsia-50', name: 'Fuchsia' },
+                                    { key: 'lime', color: 'bg-lime-500', border: 'border-lime-200', bg: 'bg-lime-50', name: 'Lime' },
+                                    { key: 'indigo', color: 'bg-indigo-500', border: 'border-indigo-200', bg: 'bg-indigo-50', name: 'Indigo' },
+                                    { key: 'amber', color: 'bg-amber-500', border: 'border-amber-200', bg: 'bg-amber-50', name: 'Amber' }
                                   ].map((theme) => (
                                     <button 
                                       key={theme.key}
@@ -5718,6 +5855,18 @@ export const SelfLearningTable: React.FC<SelfLearningTableProps> = ({ data, onUp
                         text-decoration: underline !important;
                         font-weight: 700 !important;
                       }
+
+                      /* Restore borders for pasted tables! Tailwind removes all borders. */
+                      .editor-content table {
+                        border-collapse: collapse !important;
+                        width: 100%;
+                      }
+                      .editor-content table,
+                      .editor-content th,
+                      .editor-content td {
+                        border: 1.5px solid ${editorBorderColor} !important;
+                      }
+                      /* Except when they explicitly have no borders inline, or our custom brain-maps have no borders if we want, but our Custom Grids use divs not tables anyway! */
 
                       .editor-content ul {
                         list-style-type: disc;

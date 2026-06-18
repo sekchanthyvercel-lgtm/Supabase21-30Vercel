@@ -43,6 +43,8 @@ export const highlightColors = [
 
 export const FloatingToolbar = () => {
     const [pickerPos, setPickerPos] = useState<{ x: number, y: number } | null>(null);
+    const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+    const dragStartCoords = useRef<{ x: number, y: number } | null>(null);
     const savedRange = useRef<Range | null>(null);
 
     useEffect(() => {
@@ -64,9 +66,12 @@ export const FloatingToolbar = () => {
             }
 
             if (isEditable && rect.width > 0) {
-              setPickerPos({
-                x: rect.left + (rect.width / 2),
-                y: rect.top - 10
+              setPickerPos((prev) => {
+                  if (!prev) setDragOffset({ x: 0, y: 0 });
+                  return {
+                      x: rect.left + (rect.width / 2),
+                      y: rect.top - 10
+                  };
               });
               savedRange.current = range.cloneRange();
             } else {
@@ -218,13 +223,41 @@ export const FloatingToolbar = () => {
         setPickerPos(null);
     };
 
+    const handleToolbarMouseDown = (e: React.MouseEvent) => {
+        e.preventDefault();
+        if ((e.target as HTMLElement).tagName === 'BUTTON' || (e.target as HTMLElement).closest('button') || (e.target as HTMLElement).closest('.group\\/font') || (e.target as HTMLElement).closest('.group\\/size')) return;
+
+        dragStartCoords.current = { x: e.clientX - dragOffset.x, y: e.clientY - dragOffset.y };
+
+        const handleMouseMove = (mouseMoveEvt: MouseEvent) => {
+            if (!dragStartCoords.current) return;
+            setDragOffset({
+                x: mouseMoveEvt.clientX - dragStartCoords.current.x,
+                y: mouseMoveEvt.clientY - dragStartCoords.current.y,
+            });
+        };
+
+        const handleMouseUp = () => {
+            dragStartCoords.current = null;
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+        };
+
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
+    };
+
     if (!pickerPos) return null;
 
     return (
         <div 
-            className="fixed z-[9999] bg-white p-3 rounded-[24px] shadow-[0px_20px_50px_rgba(0,0,0,0.15)] border border-slate-200 flex flex-col gap-3 animate-in fade-in zoom-in slide-in-from-bottom-2 duration-200 min-w-[360px]"
-            style={{ left: pickerPos.x, top: pickerPos.y, transform: 'translateX(-50%) translateY(-110%)' }}
-            onMouseDown={(e) => e.preventDefault()}
+            className="fixed z-[9999] bg-white p-3 rounded-[24px] shadow-[0px_20px_50px_rgba(0,0,0,0.15)] border border-slate-200 flex flex-col gap-3 animate-in fade-in zoom-in slide-in-from-bottom-2 duration-200 min-w-[360px] cursor-move"
+            style={{ 
+                left: pickerPos.x + dragOffset.x, 
+                top: pickerPos.y + dragOffset.y, 
+                transform: 'translateX(-50%) translateY(-110%)' 
+            }}
+            onMouseDown={handleToolbarMouseDown}
         >
             <div className="flex gap-2 items-center px-1">
                 <div className="flex bg-slate-50 p-1 rounded-xl gap-1 items-center shrink-0">
@@ -273,6 +306,14 @@ export const FloatingToolbar = () => {
                     <button onClick={() => applyFormat('italic')} className="p-2 hover:bg-slate-50 rounded-xl text-slate-600 transition-colors" title="Italic"><Italic size={16} /></button>
                     <button onClick={() => applyFormat('underline')} className="p-2 hover:bg-slate-50 rounded-xl text-slate-600 transition-colors" title="Underline"><UnderlineIcon size={18} /></button>
                     <button onClick={() => applyFormat('strikeThrough')} className="p-2 hover:bg-slate-50 rounded-xl text-slate-600 transition-colors" title="Strikethrough"><Strikethrough size={18} /></button>
+                </div>
+
+                <div className="w-px h-6 bg-slate-100 self-center mx-1" />
+
+                <div className="flex gap-1">
+                    <button onClick={() => applyFormat('justifyLeft')} className="p-2 hover:bg-slate-50 rounded-xl text-slate-600 transition-colors" title="Align Left"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="17" y1="10" x2="3" y2="10"></line><line x1="21" y1="6" x2="3" y2="6"></line><line x1="21" y1="14" x2="3" y2="14"></line><line x1="17" y1="18" x2="3" y2="18"></line></svg></button>
+                    <button onClick={() => applyFormat('justifyCenter')} className="p-2 hover:bg-slate-50 rounded-xl text-slate-600 transition-colors" title="Align Center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="10" x2="6" y2="10"></line><line x1="21" y1="6" x2="3" y2="6"></line><line x1="21" y1="14" x2="3" y2="14"></line><line x1="18" y1="18" x2="6" y2="18"></line></svg></button>
+                    <button onClick={() => applyFormat('justifyRight')} className="p-2 hover:bg-slate-50 rounded-xl text-slate-600 transition-colors" title="Align Right"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="21" y1="10" x2="7" y2="10"></line><line x1="21" y1="6" x2="3" y2="6"></line><line x1="21" y1="14" x2="3" y2="14"></line><line x1="21" y1="18" x2="7" y2="18"></line></svg></button>
                 </div>
 
                 <div className="w-px h-6 bg-slate-100 self-center mx-2" />
@@ -464,6 +505,145 @@ export const RichTextDiv: React.FC<{
                     }
                 }
             }
+        } else if (e.key === 'Tab') {
+            const selection = window.getSelection();
+            if (selection && selection.rangeCount > 0) {
+                const range = selection.getRangeAt(0);
+                const node = range.startContainer.nodeType === 1 ? range.startContainer as HTMLElement : range.startContainer.parentElement;
+                if (!node) return;
+
+                // 1) Handle Custom Grids (Brainstorm, Pros & Cons)
+                const customGrid = node.closest('div[style*="display: grid"]');
+                const isCustomWidget = node.closest('.brainstorm-card-wrapper') || node.closest('.pros-cons-wrapper');
+                
+                if (customGrid && isCustomWidget) {
+                    const editableBoxes = Array.from(customGrid.querySelectorAll('.brainstorm-box, .pros-box, .cons-box'));
+                    const currentBox = node.closest('.brainstorm-box, .pros-box, .cons-box');
+                    
+                    if (currentBox && editableBoxes.length > 0) {
+                        const index = editableBoxes.indexOf(currentBox as HTMLElement);
+                        if (index === editableBoxes.length - 1) {
+                            // At the last box: clone the last two children
+                            e.preventDefault();
+                            const children = Array.from(customGrid.children);
+                            if (children.length >= 2) {
+                                const lastTwo = children.slice(-2);
+                                const clone1 = lastTwo[0].cloneNode(true) as HTMLElement;
+                                const clone2 = lastTwo[1].cloneNode(true) as HTMLElement;
+                                
+                                const edit1 = clone1.querySelector('.brainstorm-box, .pros-box, .cons-box');
+                                if (edit1) edit1.innerHTML = '<br/>';
+                                const edit2 = clone2.querySelector('.brainstorm-box, .pros-box, .cons-box');
+                                if (edit2) edit2.innerHTML = '<br/>';
+                                
+                                customGrid.appendChild(clone1);
+                                customGrid.appendChild(clone2);
+                                
+                                setTimeout(() => {
+                                    const newEdit = clone1.querySelector('.brainstorm-box, .pros-box, .cons-box');
+                                    if (newEdit) {
+                                        const newRange = document.createRange();
+                                        newRange.selectNodeContents(newEdit);
+                                        newRange.collapse(true);
+                                        const sel = window.getSelection();
+                                        sel?.removeAllRanges();
+                                        sel?.addRange(newRange);
+                                    }
+                                }, 0);
+                            }
+                            return;
+                        } else if (index !== -1) {
+                            // Jump to next box
+                            e.preventDefault();
+                            const nextBox = editableBoxes[index + 1];
+                            if (nextBox) {
+                                const newRange = document.createRange();
+                                newRange.selectNodeContents(nextBox);
+                                newRange.collapse(true);
+                                const sel = window.getSelection();
+                                sel?.removeAllRanges();
+                                sel?.addRange(newRange);
+                            }
+                            return;
+                        }
+                    }
+                }
+
+                // 2) Handle HTML Tables
+                const td = node.closest('td, th');
+                if (td) {
+                    const tr = td.closest('tr');
+                    const tbody = tr?.closest('tbody') || tr?.closest('table');
+                    if (tr && tbody) {
+                        const allCells = Array.from(tbody.querySelectorAll('td, th'));
+                        const currentIndex = allCells.indexOf(td as HTMLElement);
+                        
+                        if (currentIndex === allCells.length - 1) {
+                            // Last cell in table! Add row.
+                            e.preventDefault();
+                            const newTr = tr.cloneNode(true) as HTMLTableRowElement;
+                            Array.from(newTr.querySelectorAll('td, th')).forEach(newTd => {
+                                newTd.innerHTML = '<br/>';
+                            });
+                            tr.parentNode?.appendChild(newTr);
+                            
+                            setTimeout(() => {
+                                const firstCell = newTr.querySelector('td, th');
+                                if (firstCell) {
+                                    const newRange = document.createRange();
+                                    newRange.selectNodeContents(firstCell);
+                                    newRange.collapse(true);
+                                    const sel = window.getSelection();
+                                    sel?.removeAllRanges();
+                                    sel?.addRange(newRange);
+                                }
+                            }, 0);
+                            return;
+                        } else if (currentIndex !== -1) {
+                            // Jump to next cell
+                            e.preventDefault();
+                            const nextCell = allCells[currentIndex + 1];
+                            if (nextCell) {
+                                const newRange = document.createRange();
+                                newRange.selectNodeContents(nextCell);
+                                newRange.collapse(false);
+                                const sel = window.getSelection();
+                                sel?.removeAllRanges();
+                                sel?.addRange(newRange);
+                            }
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+    };
+
+    const handlePaste = (e: React.ClipboardEvent<HTMLElement>) => {
+        // Intercept paste to replace '**' markdown bolding with actual strong tags
+        const html = e.clipboardData.getData('text/html');
+        const text = e.clipboardData.getData('text/plain');
+        
+        if (html) {
+            if (html.includes('**')) {
+                e.preventDefault();
+                const processedHtml = html
+                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                    .replace(/\*\*/g, ''); // catch any lingering floating stars
+                document.execCommand('insertHTML', false, processedHtml);
+            }
+        } else if (text) {
+            if (text.includes('**')) {
+                e.preventDefault();
+                const processedHtml = text
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/\n/g, '<br/>')
+                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                    .replace(/\*\*/g, '');
+                document.execCommand('insertHTML', false, processedHtml);
+            }
         }
     };
 
@@ -481,6 +661,7 @@ export const RichTextDiv: React.FC<{
             onFocus={handleFocus}
             onClick={handleClick}
             onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
             placeholder={placeholder}
         />
     );
