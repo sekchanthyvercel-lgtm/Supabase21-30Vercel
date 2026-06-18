@@ -37,6 +37,32 @@ export const SelfLearningTable: React.FC<SelfLearningTableProps> = ({ data, onUp
     return localStorage.getItem('self_learning_toolbar_hidden') === 'true';
   });
   const [pickerPos, setPickerPos] = useState<{ x: number, y: number } | null>(null);
+  const [pickerOffset, setPickerOffset] = useState({ x: 0, y: 0 });
+  const [isDraggingPicker, setIsDraggingPicker] = useState(false);
+  const startDragPos = useRef({ x: 0, y: 0 });
+
+  useEffect(() => {
+    if (isDraggingPicker) {
+      const handleMouseMove = (e: MouseEvent) => {
+        setPickerOffset({ x: e.clientX - startDragPos.current.x, y: e.clientY - startDragPos.current.y });
+      };
+      const handleMouseUp = () => {
+        setIsDraggingPicker(false);
+      };
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+      return () => {
+        window.removeEventListener('mousemove', handleMouseMove);
+        window.removeEventListener('mouseup', handleMouseUp);
+      };
+    }
+  }, [isDraggingPicker]);
+
+  // Reset offset when selection changes significantly (like when picker initially appears)
+  useEffect(() => {
+    setPickerOffset({ x: 0, y: 0 });
+  }, [pickerPos?.x, pickerPos?.y]);
+
   const [showAllTextColors, setShowAllTextColors] = useState(false);
   const [showAllHighlightColors, setShowAllHighlightColors] = useState(false);
   const [activeColor, setActiveColor] = useState<string | null>(null);
@@ -3124,8 +3150,8 @@ export const SelfLearningTable: React.FC<SelfLearningTableProps> = ({ data, onUp
       }
     }
 
-    // 2. Check if rich HTML contains a table or list
-    if (html && (html.includes('<table') || html.includes('<ul') || html.includes('<ol') || html.includes('<li') || html.includes('<h'))) {
+    // 2. Process any rich HTML to preserve formatting like bold, italic, color, and tables
+    if (html) {
       const div = document.createElement('div');
       div.innerHTML = html;
       
@@ -5208,9 +5234,20 @@ export const SelfLearningTable: React.FC<SelfLearningTableProps> = ({ data, onUp
                   const activeCard = getActiveCardElement();
                   return (
                     <div 
-                      className="fixed z-50 bg-white/95 backdrop-blur p-2.5 rounded-2xl shadow-2xl border border-slate-100 flex gap-3 animate-in fade-in zoom-in slide-in-from-bottom-2 duration-200 items-center"
-                      style={{ left: pickerPos.x, top: pickerPos.y, transform: 'translateX(-50%)' }}
-                      onMouseDown={(e) => e.preventDefault()}
+                      className="fixed z-50 bg-white/95 backdrop-blur p-2.5 rounded-2xl shadow-2xl border border-slate-100 flex gap-3 animate-in fade-in zoom-in slide-in-from-bottom-2 duration-200 items-center select-none"
+                      style={{ 
+                        left: pickerPos.x + pickerOffset.x, 
+                        top: pickerPos.y + pickerOffset.y, 
+                        transform: 'translateX(-50%)',
+                        cursor: isDraggingPicker ? 'grabbing' : 'grab'
+                      }}
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        if ((e.target as HTMLElement).tagName !== 'BUTTON') {
+                          setIsDraggingPicker(true);
+                          startDragPos.current = { x: e.clientX - pickerOffset.x, y: e.clientY - pickerOffset.y };
+                        }
+                      }}
                     >
                       {activeCard && (
                         <>
@@ -5417,16 +5454,13 @@ export const SelfLearningTable: React.FC<SelfLearningTableProps> = ({ data, onUp
                       }
                       
                       .editor-content table {
-                        border-collapse: collapse !important;
-                        width: 100% !important;
-                        border: 2.5px solid #334155;
+                        border-collapse: collapse;
+                        width: 100%;
                       }
 
                       .editor-content th, 
                       .editor-content td {
-                        border: 2px solid #334155;
-                        padding: 12px 14px !important;
-                        color: ${editorTextColor} !important;
+                        padding: 12px 14px;
                       }
                       
                       /* Lightbox styling to guarantee that custom templates (study plan, action plan) have a gorgeous light design on any background */
