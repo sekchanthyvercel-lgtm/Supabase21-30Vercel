@@ -124,7 +124,7 @@ export const subscribeToData = (userId: string, onUpdate: (data: any) => void, o
   }
 
   const subscription = supabase
-    .channel('dps_data_changes')
+    .channel(`dps_data_changes_${userId}`)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'dps_data', filter: `owner_id=eq.${userId}` }, (payload) => {
         if (payload.new) onUpdate((payload.new as any).data);
     })
@@ -151,28 +151,25 @@ export const fetchData = async (userId: string) => {
   } catch (error) { return null; }
 };
 
-let saveTimeout: ReturnType<typeof setTimeout> | null = null;
-let latestDataState: any = null;
-
 export const saveData = async (userId: string, dataState: any) => {
   if (!isConfigured) return;
   
-  latestDataState = dataState;
-  
-  if (saveTimeout) clearTimeout(saveTimeout);
-  
-  saveTimeout = setTimeout(async () => {
-    try {
-      const { error } = await supabase.from('dps_data').upsert({ owner_id: userId, data: latestDataState, updated_at: new Date().toISOString() }, { onConflict: 'owner_id' });
-      if (error) {
-        console.error("Supabase Save Error:", error.message);
-        alert(`Failed to sync to cloud. The imported data might be too large or there is a network issue. Details: ${error.message}`);
-      }
-      lastSyncStatus = !error;
-    } catch (error) {
-      console.error(error);
+  try {
+    const { error } = await supabase.from('dps_data').upsert({ 
+      owner_id: userId, 
+      data: dataState, 
+      updated_at: new Date().toISOString() 
+    }, { onConflict: 'owner_id' });
+    
+    if (error) {
+      console.error("Supabase Save Error:", error.message);
+    } else {
+      console.log("Supabase Cloud Sync: Success ✅");
     }
-  }, 800);
+    lastSyncStatus = !error;
+  } catch (error) {
+    console.error(error);
+  }
 };
 
 export const uploadFile = async (userId: string, file: File): Promise<string | null> => {
