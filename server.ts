@@ -571,7 +571,7 @@ app.use(express.json({ limit: '10mb' }));
       // Doing this here in Vercel lambdas is dangerous and unnecessary as Vercel serves static files directly from its CDN.
       const distPath = path.join(process.cwd(), 'dist');
       app.use(express.static(distPath));
-      app.get('*', (req, res) => {
+      app.get('*all', (req, res) => {
         res.sendFile(path.join(distPath, 'index.html'));
       });
     }
