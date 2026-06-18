@@ -301,6 +301,16 @@ ALTER PUBLICATION supabase_realtime ADD TABLE dps_data;
                                     <div className="space-y-1">
                                         <div className="flex items-center gap-3">
                                             <h4 className="font-black text-slate-800 uppercase text-base tracking-tight leading-none">Supabase Cloud Database</h4>
+                                            <div className="flex items-center gap-2">
+                                              <span className="text-[9px] font-bold text-slate-400 bg-white border border-slate-100 px-2 py-0.5 rounded">
+                                                Project: {getSupabaseProjectId()}
+                                              </span>
+                                              {currentUser?.uid && (
+                                                <span className="text-[9px] font-bold text-slate-400 bg-white border border-slate-100 px-2 py-0.5 rounded">
+                                                  Auth: {currentUser.uid.substring(0, 8)}...
+                                                </span>
+                                              )}
+                                            </div>
                                             {syncStatus.connected ? (
                                                 <span className="flex items-center gap-1.5 text-[9px] font-black text-emerald-600 bg-emerald-100/80 px-2.5 py-1 rounded-full uppercase tracking-wider animate-pulse">
                                                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
@@ -326,6 +336,15 @@ ALTER PUBLICATION supabase_realtime ADD TABLE dps_data;
                                                     : `An issue occurred while reaching your Supabase project: ${syncStatus.error}`
                                             }
                                         </p>
+                                        
+                                        <div className="mt-3 p-3 bg-indigo-50/50 border border-indigo-100 rounded-xl space-y-1.5 shadow-sm">
+                                          <h5 className="text-[10px] font-black text-indigo-900 uppercase tracking-wider">Vercel & Deployment Sync Notice</h5>
+                                          <p className="text-[9px] text-indigo-700 leading-relaxed font-bold">
+                                            If redeploying on Vercel, ensure you use <span className="text-indigo-900 underline decoration-indigo-300">VITE_SUPABASE_URL</span> and <span className="text-indigo-900 underline decoration-indigo-300">VITE_SUPABASE_ANON_KEY</span>. 
+                                            Standard Vercel variables like <i>SUPABASE_URL</i> are <u>not</u> shared with browser code unless they have the <b className="text-indigo-900">VITE_</b> prefix. 
+                                            If your project shows as "Public Fallback" below, your custom keys are missing in Vercel.
+                                          </p>
+                                        </div>
                                     </div>
                                 </div>
                                 <button 
@@ -346,7 +365,11 @@ ALTER PUBLICATION supabase_realtime ADD TABLE dps_data;
                                     </div>
 
                                     <div className="bg-orange-50 border border-orange-200 p-4 rounded-2xl space-y-3">
-                                        <p className="font-bold text-orange-950 text-xs leading-snug">👉 Direct Setup Links:</p>
+                                        <p className="font-bold text-orange-950 text-xs leading-snug underline">👉 CRITICAL Vercel Setup:</p>
+                                        <p className="text-[10px] text-orange-900 font-medium leading-relaxed">
+                                          Vercel restricts environment variables starting with <b className="text-orange-950">VITE_</b> for browser access. 
+                                          If you used <i>SUPABASE_URL</i>, rename it to <b>VITE_SUPABASE_URL</b> in Vercel settings.
+                                        </p>
                                         <div className="flex flex-wrap gap-2">
                                             <a 
                                                 href={`https://supabase.com/dashboard/project/${getSupabaseProjectId()}/sql`} 

@@ -61,6 +61,7 @@ interface SidebarProps {
   canRedo?: boolean;
   onUndo?: () => void;
   onRedo?: () => void;
+  isSyncing?: boolean;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ 
@@ -74,7 +75,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   canUndo,
   canRedo,
   onUndo,
-  onRedo
+  onRedo,
+  isSyncing
 }) => {
 
   const [isOnline, setIsOnline] = useState(true);
@@ -202,18 +204,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   <p className="text-[10px] font-black text-slate-900 truncate tracking-tight">{currentUser?.name}</p>
                   <p className="text-[10px] font-black text-rose-600 truncate lowercase mt-0.5">{currentUser?.email || 'Local Account'}</p>
                   <div className="flex items-center gap-1.5 mt-1">
-                    <span className={`w-2 h-2 rounded-full ${isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
+                    <span className={`w-2 h-2 rounded-full ${isSyncing ? 'bg-blue-500 animate-bounce' : isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
                     <span 
-                      className={`text-[9px] font-black leading-none ${isOnline ? 'text-emerald-600' : 'text-amber-600/90'}`} 
+                      className={`text-[9px] font-black leading-none ${isSyncing ? 'text-blue-600' : isOnline ? 'text-emerald-600' : 'text-amber-600/90'}`} 
                       title={
-                        isOnline 
-                          ? "Connected to Supabase Cloud sync" 
-                          : typeof window !== 'undefined' && window.navigator.onLine 
-                            ? "Internet connected, but Supabase is unreachable! Ensure the 'dps_data' table exists in your Supabase project and check your VITE_SUPABASE keys." 
-                            : "Offline. Notes are saved locally and will auto-sync when connection is restored."
+                        isSyncing
+                          ? "Uploading changes to cloud..."
+                          : isOnline 
+                            ? "Connected to Supabase Cloud sync" 
+                            : typeof window !== 'undefined' && window.navigator.onLine 
+                              ? "Internet connected, but Supabase is unreachable! Ensure the 'dps_data' table exists in your Supabase project and check your VITE_SUPABASE keys." 
+                              : "Offline. Notes are saved locally and will auto-sync when connection is restored."
                       }
                     >
-                      {isOnline ? 'Online • synced' : 'Offline • local'}
+                      {isSyncing ? 'Syncing...' : isOnline ? 'Online • synced' : 'Offline • local'}
                     </span>
                   </div>
                 </div>

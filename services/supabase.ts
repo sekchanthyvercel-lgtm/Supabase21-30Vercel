@@ -63,19 +63,24 @@ const supabaseUrl = supabaseUrlRaw || undefined;
 // @ts-ignore
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || import.meta.env.SUPABASE_ANON_KEY;
 
-const isConfigured = !!supabaseUrl && !!supabaseAnonKey && !supabaseAnonKey.includes('dummy');
+const isConfigured = !!supabaseUrlRaw && !!supabaseAnonKey && !supabaseAnonKey.includes('dummy');
 
 // Create a single supabase client for interacting with your database
+// Default fallback is ONLY for initial landing page if no keys provided at all
 export const supabase = createClient(
   supabaseUrl || 'https://kugvbcwrjzoxkabpjvcr.supabase.co', 
   supabaseAnonKey || 'dummy-key'
 );
 
+if (!isConfigured) {
+  console.warn("Supabase is NOT fully configured. Sync features will be disabled. Ensure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set in your environment variables/Vercel.");
+}
+
 export const getSupabaseProjectId = () => {
-  if (!supabaseUrl || !isConfigured) return 'kugvbcwrjzoxkabpjvcr'; 
+  if (!supabaseUrl || !isConfigured) return 'kugvbcwrjzoxkabpjvcr (Public Fallback)'; 
   try {
     return new URL(supabaseUrl).hostname.split('.')[0];
-  } catch (e) { return 'kugvbcwrjzoxkabpjvcr'; }
+  } catch (e) { return 'kugvbcwrjzoxkabpjvcr (Public Fallback)'; }
 };
 
 export const getSupabaseAuthProvidersUrl = () => {
@@ -93,9 +98,13 @@ export const checkSupabaseConnection = async () => {
         lastSyncStatus = !error;
         if (error) {
             console.warn("Supabase check failed:", error.message, error.hint || "");
+            if (error.message.includes("does not exist")) {
+                console.error("CRITICAL: 'dps_data' table missing! Please run the SQL setup script in the Supabase SQL Editor.");
+            }
         }
         return lastSyncStatus;
-    } catch (e) {
+    } catch (e: any) {
+        console.error("Supabase connection exception:", e.message);
         lastSyncStatus = false;
         return false;
     } finally {

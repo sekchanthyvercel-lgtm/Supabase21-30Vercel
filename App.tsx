@@ -271,6 +271,8 @@ const App: React.FC = () => {
   const previousDataSyncRef = useRef<string | null>(null);
   const isCloudLoadedRef = useRef(false);
 
+  const [isSyncing, setIsSyncing] = useState(false);
+
   // Supabase Global Auto-Sync Hook
   useEffect(() => {
     if (currentUser?.uid && !loading && data && isCloudLoadedRef.current) {
@@ -278,14 +280,18 @@ const App: React.FC = () => {
       if (dataStr === previousDataSyncRef.current) return;
       previousDataSyncRef.current = dataStr;
 
+      setIsSyncing(true);
       const timer = setTimeout(async () => {
         try {
+          const { saveData } = await import("./services/supabase");
           await saveData(currentUser.uid!, data);
           setShowSyncToast(true);
-          const toastTimer = setTimeout(() => setShowSyncToast(false), 3200);
+          const toastTimer = setTimeout(() => setShowSyncToast(false), 3000);
+          setIsSyncing(false);
           return () => clearTimeout(toastTimer);
         } catch (err) {
           console.error("Auto Sync Error:", err);
+          setIsSyncing(false);
         }
       }, 1500); // 1.5s debounce
       return () => clearTimeout(timer);
@@ -546,10 +552,22 @@ const App: React.FC = () => {
       return;
     }
     setLoading(true);
+    
+    // Add a safety timeout for loading
+    const loadTimeout = setTimeout(() => {
+      if (loading) {
+        console.warn("Cloud load timed out. Falling back to local storage.");
+        setLoading(false);
+        isCloudLoadedRef.current = true; // Allow local saves to cloud if cloud is unreachable
+      }
+    }, 3000);
+
     const unsubscribe = subscribeToData(
       uid,
       (newData) => {
+        clearTimeout(loadTimeout);
         isCloudLoadedRef.current = true;
+        setLoading(false);
         
         // Prevent incoming remote updates from overwriting recent local updates (echo loop)
         if (Date.now() - lastLocalUpdateRef.current < 2500) {
@@ -843,13 +861,6 @@ const App: React.FC = () => {
       );
       const newData = { ...prev, students: updatedStudents };
       storage.setItem("dps_data", JSON.stringify(newData));
-
-      if (currentUser?.uid) {
-        import("./services/supabase").then(({ saveStudent }) => {
-          const student = updatedStudents.find((s) => s.id === id);
-          if (student) saveStudent(currentUser.uid, student);
-        });
-      }
       return newData;
     });
 
@@ -867,23 +878,7 @@ const App: React.FC = () => {
         category === "dpss"
           ? { ...prev, dpssTopics: updatedTopics }
           : { ...prev, selfLearningTopics: updatedTopics };
-      previousDataSyncRef.current = JSON.stringify(newData);
       storage.setItem("dps_data", JSON.stringify(newData));
-
-      if (currentUser?.uid) {
-        import("./services/supabase").then(
-          ({ saveTopic, deleteTopic, saveData }) => {
-            saveData(currentUser.uid!, newData);
-            if (topicToSave) {
-              if (topicToSave.deleted && !topicToSave.deletedAt) {
-                deleteTopic(currentUser.uid, topicToSave.id, category);
-              } else {
-                saveTopic(currentUser.uid, topicToSave, category);
-              }
-            }
-          },
-        );
-      }
       return newData;
     });
   };
@@ -893,12 +888,6 @@ const App: React.FC = () => {
       const newDailyNotes = { ...(prev.dailyNotes || {}), [date]: content };
       const newData = { ...prev, dailyNotes: newDailyNotes };
       storage.setItem("dps_data", JSON.stringify(newData));
-
-      if (currentUser?.uid) {
-        import("./services/supabase").then(({ saveDailyNote }) => {
-          saveDailyNote(currentUser.uid, date, content);
-        });
-      }
       return newData;
     });
   };
@@ -914,12 +903,6 @@ const App: React.FC = () => {
       };
       const newData = { ...prev, journalEntries: newJournalEntries };
       storage.setItem("dps_data", JSON.stringify(newData));
-
-      if (currentUser?.uid) {
-        import("./services/supabase").then(({ saveJournalEntry }) => {
-          saveJournalEntry(currentUser.uid, date, entry);
-        });
-      }
       return newData;
     });
   };
@@ -938,12 +921,6 @@ const App: React.FC = () => {
       const newCompletions = { ...completions, [date]: dayCompletions };
       const newData = { ...prev, habitCompletions: newCompletions };
       storage.setItem("dps_data", JSON.stringify(newData));
-
-      if (currentUser?.uid) {
-        import("./services/supabase").then(({ saveHabitCompletion }) => {
-          saveHabitCompletion(currentUser.uid, date, habitId, completed);
-        });
-      }
       return newData;
     });
   };
@@ -1201,6 +1178,7 @@ const App: React.FC = () => {
           canRedo={redoStack.length > 0}
           onUndo={undo}
           onRedo={redo}
+          isSyncing={isSyncing}
         />
 
         <AIModal
