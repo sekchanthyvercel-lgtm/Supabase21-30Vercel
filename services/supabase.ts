@@ -166,7 +166,6 @@ export const saveData = async (userId: string, dataState: any) => {
       const { error } = await supabase.from('dps_data').upsert({ owner_id: userId, data: latestDataState, updated_at: new Date().toISOString() }, { onConflict: 'owner_id' });
       if (error) {
         console.error("Supabase Save Error:", error.message);
-        alert(`Failed to sync to cloud. The imported data might be too large or there is a network issue. Details: ${error.message}`);
       }
       lastSyncStatus = !error;
     } catch (error) {
