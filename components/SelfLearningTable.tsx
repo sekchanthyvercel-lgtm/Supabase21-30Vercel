@@ -1875,7 +1875,7 @@ export const SelfLearningTable: React.FC<SelfLearningTableProps> = ({ data, onUp
         return;
       }
     } else if (!isEmptyNewTopic) {
-      if (!confirm('Permanently delete this topic? This cannot be undone. OK / Cancel')) {
+      if (!confirm('Move this topic to the Recycle Bin? (You can restore it later from the Recycle Bin)')) {
         return;
       }
     }

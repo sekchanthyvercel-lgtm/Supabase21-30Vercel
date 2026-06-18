@@ -779,12 +779,7 @@ export const SettingsModal: React.FC<Props> = ({ isOpen, onClose, settings, onUp
                             <div className="w-full">
                               <p className="text-sm font-black text-slate-800 mb-1">Synced & Backed Up</p>
                               {currentUser?.email && <p className="text-[10px] font-bold text-orange-600 mb-1 break-all tracking-tight">{currentUser.email}</p>}
-                              <div className="flex items-center gap-1.5 justify-center mb-2">
-                                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                                <span className={`text-[10px] font-black uppercase tracking-widest leading-none ${syncStatus.connected ? 'text-emerald-600' : 'text-rose-600'}`}>
-                                  {syncStatus.connected ? `Supabase Cloud Active (${getSupabaseProjectId()})` : (syncStatus.configured ? 'Supabase Connection Error' : 'Supabase Not Configured')}
-                                </span>
-                              </div>
+                              {/* Hidden Supabase Cloud Active indicator per user request */}
                               <p className="text-xs text-slate-500 leading-relaxed mb-4">
                                 Your data is successfully synchronizing live!
                               </p>

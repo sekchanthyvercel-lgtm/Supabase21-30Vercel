@@ -216,6 +216,11 @@ const App: React.FC = () => {
   
   const lastLocalUpdateRef = useRef<number>(0);
   const data = dataLocal;
+  const currentDataRef = useRef<AppData>(dataLocal);
+  useEffect(() => {
+    currentDataRef.current = dataLocal;
+  }, [dataLocal]);
+
   const setData = (action: React.SetStateAction<AppData>) => {
     lastLocalUpdateRef.current = Date.now();
     setInternalData(action);
@@ -269,6 +274,7 @@ const App: React.FC = () => {
   const OFFICIAL_DAILY_TASKS = useMemo(() => [], []);
 
   const previousDataSyncRef = useRef<string | null>(null);
+  const lastScheduledDataStrRef = useRef<string | null>(null);
   const isCloudLoadedRef = useRef(false);
 
   const [isSyncing, setIsSyncing] = useState(false);
@@ -277,24 +283,22 @@ const App: React.FC = () => {
   useEffect(() => {
     if (currentUser?.uid && !loading && data && isCloudLoadedRef.current) {
       const dataStr = JSON.stringify(data);
-      if (dataStr === previousDataSyncRef.current) return;
-      previousDataSyncRef.current = dataStr;
+      if (dataStr === lastScheduledDataStrRef.current) return;
+      lastScheduledDataStrRef.current = dataStr;
 
       setIsSyncing(true);
       const timer = setTimeout(async () => {
         try {
           const { saveData } = await import("./services/supabase");
-          // Instant saves the snapshot of the data state
-          await saveData(currentUser.uid!, data);
-          setShowSyncToast(true);
-          const toastTimer = setTimeout(() => setShowSyncToast(false), 3000);
+          // Instant saves the snapshot of the data state directly without extra debouncing
+          await saveData(currentUser.uid!, data, true);
+          previousDataSyncRef.current = dataStr;
           setIsSyncing(false);
-          return () => clearTimeout(toastTimer);
         } catch (err) {
           console.error("Auto Sync Error:", err);
           setIsSyncing(false);
         }
-      }, 400); // Super responsive 400ms debounce
+      }, 400); // 400ms debounce
       return () => clearTimeout(timer);
     }
   }, [data, currentUser, loading]);
@@ -573,10 +577,12 @@ const App: React.FC = () => {
         if (!newData) return;
 
         const incomingStr = JSON.stringify(newData);
+        const currentDataStr = JSON.stringify(currentDataRef.current);
         
         // 1. If incoming data is exactly what we already have locally, do nothing but keep previousDataSyncRef updated
-        if (JSON.stringify(data) === incomingStr) {
+        if (currentDataStr === incomingStr) {
           previousDataSyncRef.current = incomingStr;
+          lastScheduledDataStrRef.current = incomingStr;
           return;
         }
 
@@ -585,11 +591,10 @@ const App: React.FC = () => {
           return;
         }
 
-        // 3. If there are recent local changes that have been made but not yet synchronized
-        const isLocalDirty = JSON.stringify(data) !== previousDataSyncRef.current;
-        const wasRecentlyUpdated = Date.now() - lastLocalUpdateRef.current < 2000;
-        if (isLocalDirty && wasRecentlyUpdated) {
-          // Keep local changes because they are actively being edited/saved. They will sync to cloud soon.
+        // 3. If there are recent local changes that have been made or the user is actively editing (within 5 seconds)
+        // We completely trust and keep the local changes. They will automatically debounced-sync to cloud soon.
+        const wasRecentlyUpdated = Date.now() - lastLocalUpdateRef.current < 5000;
+        if (wasRecentlyUpdated) {
           return;
         }
 
@@ -636,7 +641,9 @@ const App: React.FC = () => {
           }
         }
 
-        previousDataSyncRef.current = JSON.stringify(newData);
+        const finalStr = JSON.stringify(newData);
+        previousDataSyncRef.current = finalStr;
+        lastScheduledDataStrRef.current = finalStr;
         setInternalData(newData);
         storage.setItem("dps_data", JSON.stringify(newData)); // SYNC to storage
         setLoading(false);
@@ -822,8 +829,8 @@ const App: React.FC = () => {
               ),
             );
 
-            // 4. Generic sync for settings
-            saveData(currentUser.uid!, newData);
+            // 4. Generic sync for settings (instant write to prevent delays)
+            saveData(currentUser.uid!, newData, true);
 
             // 5. Sync Topics (DPSS and Self-Learning)
             const topicsToSave: {
@@ -979,7 +986,7 @@ const App: React.FC = () => {
     setHistory((prev) => prev.slice(0, -1));
     setData(previous);
     storage.setItem("dps_data", JSON.stringify(previous));
-    if (currentUser?.uid) saveData(currentUser.uid, previous);
+    if (currentUser?.uid) saveData(currentUser.uid, previous, true);
   };
 
   const redo = () => {
@@ -989,7 +996,7 @@ const App: React.FC = () => {
     setRedoStack((prev) => prev.slice(0, -1));
     setData(next);
     storage.setItem("dps_data", JSON.stringify(next));
-    if (currentUser?.uid) saveData(currentUser.uid, next);
+    if (currentUser?.uid) saveData(currentUser.uid, next, true);
   };
 
   useEffect(() => {
