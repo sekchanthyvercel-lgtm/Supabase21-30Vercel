@@ -215,6 +215,7 @@ const App: React.FC = () => {
   });
   
   const lastLocalUpdateRef = useRef<number>(0);
+  const hasUnsavedChangesRef = useRef<boolean>(false);
   const data = dataLocal;
   const currentDataRef = useRef<AppData>(dataLocal);
   useEffect(() => {
@@ -223,6 +224,7 @@ const App: React.FC = () => {
 
   const setData = (action: React.SetStateAction<AppData>) => {
     lastLocalUpdateRef.current = Date.now();
+    hasUnsavedChangesRef.current = true;
     setInternalData(action);
   };
 
@@ -293,6 +295,11 @@ const App: React.FC = () => {
           // Instant saves the snapshot of the data state directly without extra debouncing
           await saveData(currentUser.uid!, data, true);
           previousDataSyncRef.current = dataStr;
+          
+          // Clear hasUnsavedChangesRef ONLY if the current local state hasn't changed since this save ran
+          if (JSON.stringify(currentDataRef.current) === dataStr) {
+            hasUnsavedChangesRef.current = false;
+          }
           setIsSyncing(false);
         } catch (err) {
           console.error("Auto Sync Error:", err);
@@ -591,8 +598,15 @@ const App: React.FC = () => {
           return;
         }
 
-        // 3. If there are recent local changes that have been made or the user is actively editing (within 5 seconds)
-        // We completely trust and keep the local changes. They will automatically debounced-sync to cloud soon.
+        // 3. If there are active unsaved local changes (or currently scheduled) or the user is editing,
+        // we completely trust and keep the local changes. They will automatically debounced-sync to cloud soon.
+        const hasUnsavedLocalState = lastScheduledDataStrRef.current !== null && 
+                                     previousDataSyncRef.current !== null && 
+                                     lastScheduledDataStrRef.current !== previousDataSyncRef.current;
+        if (hasUnsavedLocalState || hasUnsavedChangesRef.current) {
+          return;
+        }
+
         const wasRecentlyUpdated = Date.now() - lastLocalUpdateRef.current < 5000;
         if (wasRecentlyUpdated) {
           return;

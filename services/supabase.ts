@@ -91,25 +91,8 @@ export const getSupabaseAuthProvidersUrl = () => {
 export const isSupabaseConfigured = () => isConfigured;
 
 export const checkSupabaseConnection = async () => {
-    if (!isConfigured || isConfigCheckInProgress) return lastSyncStatus;
-    isConfigCheckInProgress = true;
-    try {
-        const { error } = await supabase.from('dps_data').select('updated_at', { count: 'exact', head: true }).limit(1);
-        lastSyncStatus = !error;
-        if (error) {
-            console.warn("Supabase check failed:", error.message, error.hint || "");
-            if (error.message.includes("does not exist")) {
-                console.error("CRITICAL: 'dps_data' table missing! Please run the SQL setup script in the Supabase SQL Editor.");
-            }
-        }
-        return lastSyncStatus;
-    } catch (e: any) {
-        console.error("Supabase connection exception:", e.message);
-        lastSyncStatus = false;
-        return false;
-    } finally {
-        isConfigCheckInProgress = false;
-    }
+    if (!isConfigured) return false;
+    return typeof window !== 'undefined' && window.navigator.onLine;
 };
 
 export const logOut = async () => {
