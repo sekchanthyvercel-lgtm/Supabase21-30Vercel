@@ -59,9 +59,11 @@ export interface AppSettings {
   monthlyBudgetGoal?: number;
   fontColor?: string;
   dateTextColor?: string;
+  highContrastMode?: boolean;
   paperStyle?: string;
   tableBorderThickness?: number;
   tableBorderColor?: string;
+  dailyPerformanceSymbol?: 'circle' | 'square' | 'star' | 'heart' | 'diamond' | 'hexagon' | 'triangle' | 'shield' | 'lightning' | 'crown' | 'moon' | 'sparkle' | 'octagon' | 'cross' | 'cloud';
   dopamineFast?: any;
   dopamineFastsHistory?: any[];
   weeklyAIInsight?: Record<string, string>;
@@ -124,6 +126,16 @@ export interface DPSSTopic {
   attachments?: { id: string; name: string; url: string; type: string }[];
   isArchived?: boolean;
   isLocked?: boolean;
+  customBullets?: string[];
+  customChecklists?: string[];
+  defaultListType?: 'bullet' | 'checklist' | 'number';
+  defaultMarker?: string;
+  textFontFamily?: string;
+  textFontSize?: number;
+  headerFontFamily?: string;
+  headerFontSize?: number;
+  paperStyle?: string;
+  gridSpacing?: number;
 }
 
 export interface Habit {
@@ -176,6 +188,25 @@ export interface AppData {
   dailyPerformanceTasks?: DailyPerformanceTask[];
   dailyPerformanceCompletions?: Record<string, Record<string, boolean>>; // Key: YYYY-MM-DD, value is { [taskId]: boolean }
   tomorrowTasks?: { id: string; name: string; completed: boolean }[];
+  templates?: Template[];
+}
+
+export interface Template {
+  id: string;
+  name: string;
+  description: string;
+  content: string; // The rich HTML/text configuration
+  customBullets: string[];
+  customChecklists: string[];
+  defaultListType: 'bullet' | 'checklist' | 'number';
+  defaultMarker: string;
+  themeColor: string; // Tailwind class prefix, e.g. emerald, rose, blue, amber, violet, zinc
+  createdAt: string;
+  isSystem?: boolean;
+  textFontFamily?: string;
+  textFontSize?: number;
+  headerFontFamily?: string;
+  headerFontSize?: number;
 }
 
 export interface HabitReframerRecord {
@@ -297,7 +328,8 @@ export enum Tab {
   ExpenseTracker = 'ExpenseTracker',
   Analytics = 'Analytics',
   RecycleBin = 'RecycleBin',
-  Maintenance = 'Maintenance'
+  Maintenance = 'Maintenance',
+  Templates = 'Templates'
 }
 
 export type ViewMode = 'Default' | 'Minimalist';

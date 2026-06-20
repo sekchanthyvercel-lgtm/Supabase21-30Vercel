@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Zap, Undo, Redo, Plus, Trash2, Calendar, AlignLeft, AlignCenter, AlignRight, Highlighter, Type, Settings2, MousePointer2, Minus, Layout, Square, Quote, FileUp, FileDown, Loader2, Wand2, Menu, ChevronLeft, FileText, ChevronDown, ChevronRight, Table, Grid3X3, Columns, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Palette, Italic, Underline, Strikethrough, Indent, Outdent, List, ListOrdered, CheckSquare, MoreHorizontal, Download, Maximize2, Minimize2, Search, Archive, Folder, Star, Share2, Pencil, Lock, Unlock, ArrowRightLeft, GraduationCap, Copy, GripVertical, Ruler } from 'lucide-react';
+import { Zap, Undo, Redo, Plus, Trash2, Calendar, AlignLeft, AlignCenter, AlignRight, Highlighter, Type, Settings2, MousePointer2, Minus, Layout, Square, Quote, FileUp, FileDown, Loader2, Wand2, Menu, ChevronLeft, FileText, ChevronDown, ChevronRight, Table, Grid3X3, LayoutGrid, Columns, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Palette, Italic, Underline, Strikethrough, Indent, Outdent, List, ListOrdered, CheckSquare, MoreHorizontal, Download, Maximize2, Minimize2, Search, Archive, Folder, Star, Share2, Pencil, Lock, Unlock, ArrowRightLeft, GraduationCap, Copy, GripVertical, Ruler } from 'lucide-react';
 import { AppData, DPSSTopic } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 import { callNeuralEngine } from '../services/neuralEngine';
@@ -151,12 +151,14 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
   const [pdfMargin, setPdfMargin] = useState(0.5);
   const [pdfPaperStyle, setPdfPaperStyle] = useState('none');
   const [showTableToolsMenu, setShowTableToolsMenu] = useState(false);
+  const [showPageOptions, setShowPageOptions] = useState(false);
 
-  const toggleDropdown = (menuName: 'export' | 'tableTools' | 'more' | 'moreTools') => {
+  const toggleDropdown = (menuName: 'export' | 'tableTools' | 'more' | 'moreTools' | 'pageOptions') => {
     setShowExportMenu(menuName === 'export' ? !showExportMenu : false);
     setShowTableToolsMenu(menuName === 'tableTools' ? !showTableToolsMenu : false);
     setShowMoreMenu(menuName === 'more' ? !showMoreMenu : false);
     setShowMoreTools(menuName === 'moreTools' ? !showMoreTools : false);
+    setShowPageOptions(menuName === 'pageOptions' ? !showPageOptions : false);
   };
 
   // Global click outside to dismiss menus
@@ -258,7 +260,7 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
 
     // Settings
     const settings = data.settings || { fontSize: 12, fontFamily: "'Inter', sans-serif" };
-    const paperStyleToUse = styleToUse === 'no_bg' ? 'none' : (pdfPaperStyle !== 'none' ? pdfPaperStyle : (settings.paperStyle || 'none'));
+    const paperStyleToUse = styleToUse === 'no_bg' ? 'none' : (pdfPaperStyle !== 'none' ? pdfPaperStyle : ((activeTopic as any).paperStyle || settings.paperStyle || 'none'));
     const selectedPaper = PAPER_STYLES.find(s => s.id === paperStyleToUse) || PAPER_STYLES[0];
 
     // CSS background generator for paper styling
@@ -962,7 +964,7 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
       const activeTopic = (selectedTopicId ? findTopicLocal(data?.dpssTopics || [], selectedTopicId) : null) || { title: 'Notes' };
       
       const settings = data.settings || { fontSize: 12, fontFamily: "'Inter', sans-serif" };
-      const paperStyle = settings.paperStyle || 'none';
+      const paperStyle = (activeTopic as any).paperStyle || settings.paperStyle || 'none';
       const selectedPaper = PAPER_STYLES.find(s => s.id === paperStyle) || PAPER_STYLES[0];
 
       const isDark = selectedPaper.id === 'stars' || selectedPaper.id === 'none-dark' || selectedPaper.id === 'none';
@@ -1141,7 +1143,18 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
   const textFontSize = Math.max(16, dpssSettings.textFontSize || dpssSettings.fontSize || 16);
   const tableBorderThickness = dpssSettings.tableBorderThickness !== undefined ? dpssSettings.tableBorderThickness : 2;
   const tableBorderColor = dpssSettings.tableBorderColor || '#334155';
-  const paperStyle = dpssSettings.paperStyle || 'none';
+  const findTopicLocally = (items: DPSSTopic[], id: string): DPSSTopic | null => {
+    for (const item of items) {
+      if (item.id === id) return item;
+      if (item.children) {
+        const found = findTopicLocally(item.children, id);
+        if (found) return found;
+      }
+    }
+    return null;
+  };
+  const activeTopic = selectedTopicId ? findTopicLocally(data?.dpssTopics || [], selectedTopicId) : null;
+  const paperStyle = (activeTopic as any)?.paperStyle || dpssSettings.paperStyle || 'none';
   const selectedPaper = PAPER_STYLES.find(s => s.id === paperStyle) || PAPER_STYLES[0];
 
   const filterTopics = (items: DPSSTopic[]): DPSSTopic[] => {
@@ -2368,6 +2381,136 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
     }
   };
 
+  const insertThreeColumnGrid = (theme = 'emerald') => {
+    if (!selectedTopic) return;
+    const configs: Record<string, { border: string; bg: string; title: string; desc: string; inner: string }> = {
+      emerald: { border: '#bbf7d0', bg: '#f0fdf4', title: '#047857', desc: '#064e3b', inner: '#86efac' },
+      rose: { border: '#fecdd3', bg: '#fff1f2', title: '#be123c', desc: '#881337', inner: '#fda4af' },
+      blue: { border: '#bfdbfe', bg: '#f0f7ff', title: '#1d4ed8', desc: '#1e3a8a', inner: '#93c5fd' },
+      slate: { border: '#cbd5e1', bg: '#f8fafc', title: '#334155', desc: '#475569', inner: '#cbd5e1' },
+      violet: { border: '#ddd6fe', bg: '#f5f3ff', title: '#6d28d9', desc: '#4c1d95', inner: '#c4b5fd' },
+      gold: { border: '#fef08a', bg: '#fefce8', title: '#a16207', desc: '#713f12', inner: '#fde047' },
+      indigo: { border: '#c7d2fe', bg: '#eef2ff', title: '#4338ca', desc: '#312e81', inner: '#a5b4fc' },
+      amber: { border: '#fde68a', bg: '#fffbeb', title: '#b45309', desc: '#78350f', inner: '#fcd34d' },
+      sky: { border: '#bae6fd', bg: '#f0f9ff', title: '#0369a1', desc: '#0c4a6e', inner: '#7dd3fc' },
+      teal: { border: '#99f6e4', bg: '#f0fdfa', title: '#0f766e', desc: '#115e59', inner: '#5eead4' },
+      fuchsia: { border: '#f5d0fe', bg: '#fdf4ff', title: '#a21caf', desc: '#701a75', inner: '#f0abfc' },
+      orange: { border: '#fed7aa', bg: '#fff7ed', title: '#c2410c', desc: '#7c2d12', inner: '#fdba74' }
+    };
+    const c = configs[theme] || configs.emerald;
+
+    const html = `
+<div class="three-col-wrapper" style="border: 1.5px solid ${c.border} !important; background-color: ${c.bg} !important; background: ${c.bg} !important; border-radius: 20px; padding: 20px; margin: 18px 0; font-family: sans-serif; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.04); text-align: left;">
+  <div style="font-weight: 955; color: ${c.title} !important; text-transform: uppercase; font-size: 13px; letter-spacing: 0.05em; margin-bottom: 6px;">
+    📊 3-COLUMN ANALYTICAL FRAMEWORK
+  </div>
+  <div style="font-size: 12px; color: ${c.desc} !important; font-weight: 700; margin-bottom: 12px; line-height: 1.5;">
+    Deconstruct your concept into three fundamental pillars, phases, or perspectives.
+  </div>
+  <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px;">
+    <div style="background-color: #fff !important; background: #fff !important; border: 1.5px solid ${c.inner} !important; border-radius: 12px; padding: 12px; min-height: 60px;">
+      <div style="font-weight: 800; color: ${c.title} !important; font-size: 11px; margin-bottom: 4px; text-transform: uppercase;">Pillar 1/Phase 1</div>
+      <div style="font-size: 13px; color: #0f172a !important;" class="col-box">Detail point 1...</div>
+    </div>
+    <div style="background-color: #fff !important; background: #fff !important; border: 1.5px solid ${c.inner} !important; border-radius: 12px; padding: 12px; min-height: 60px;">
+      <div style="font-weight: 800; color: ${c.title} !important; font-size: 11px; margin-bottom: 4px; text-transform: uppercase;">Pillar 2/Phase 2</div>
+      <div style="font-size: 13px; color: #0f172a !important;" class="col-box">Detail point 2...</div>
+    </div>
+    <div style="background-color: #fff !important; background: #fff !important; border: 1.5px solid ${c.inner} !important; border-radius: 12px; padding: 12px; min-height: 60px;">
+      <div style="font-weight: 800; color: ${c.title} !important; font-size: 11px; margin-bottom: 4px; text-transform: uppercase;">Pillar 3/Phase 3</div>
+      <div style="font-size: 13px; color: #0f172a !important;" class="col-box">Detail point 3...</div>
+    </div>
+  </div>
+</div>
+<p><br></p>
+`;
+
+    if (editorRef.current) {
+      editorRef.current.focus();
+      if (savedRange.current) {
+        const selection = window.getSelection();
+        selection?.removeAllRanges();
+        selection?.addRange(savedRange.current);
+      } else {
+        const range = document.createRange();
+        range.selectNodeContents(editorRef.current);
+        range.collapse(false);
+        const selection = window.getSelection();
+        selection?.removeAllRanges();
+        selection?.addRange(range);
+      }
+      document.execCommand('insertHTML', false, html);
+      updateTopic(selectedTopic.id, { content: editorRef.current.innerHTML });
+    }
+  };
+
+  const insertFourColumnGrid = (theme = 'emerald') => {
+    if (!selectedTopic) return;
+    const configs: Record<string, { border: string; bg: string; title: string; desc: string; inner: string }> = {
+      emerald: { border: '#bbf7d0', bg: '#f0fdf4', title: '#047857', desc: '#064e3b', inner: '#86efac' },
+      rose: { border: '#fecdd3', bg: '#fff1f2', title: '#be123c', desc: '#881337', inner: '#fda4af' },
+      blue: { border: '#bfdbfe', bg: '#f0f7ff', title: '#1d4ed8', desc: '#1e3a8a', inner: '#93c5fd' },
+      slate: { border: '#cbd5e1', bg: '#f8fafc', title: '#334155', desc: '#475569', inner: '#cbd5e1' },
+      violet: { border: '#ddd6fe', bg: '#f5f3ff', title: '#6d28d9', desc: '#4c1d95', inner: '#c4b5fd' },
+      gold: { border: '#fef08a', bg: '#fefce8', title: '#a16207', desc: '#713f12', inner: '#fde047' },
+      indigo: { border: '#c7d2fe', bg: '#eef2ff', title: '#4338ca', desc: '#312e81', inner: '#a5b4fc' },
+      amber: { border: '#fde68a', bg: '#fffbeb', title: '#b45309', desc: '#78350f', inner: '#fcd34d' },
+      sky: { border: '#bae6fd', bg: '#f0f9ff', title: '#0369a1', desc: '#0c4a6e', inner: '#7dd3fc' },
+      teal: { border: '#99f6e4', bg: '#f0fdfa', title: '#0f766e', desc: '#115e59', inner: '#5eead4' },
+      fuchsia: { border: '#f5d0fe', bg: '#fdf4ff', title: '#a21caf', desc: '#701a75', inner: '#f0abfc' },
+      orange: { border: '#fed7aa', bg: '#fff7ed', title: '#c2410c', desc: '#7c2d12', inner: '#fdba74' }
+    };
+    const c = configs[theme] || configs.emerald;
+
+    const html = `
+<div class="four-col-wrapper" style="border: 1.5px solid ${c.border} !important; background-color: ${c.bg} !important; background: ${c.bg} !important; border-radius: 20px; padding: 20px; margin: 18px 0; font-family: sans-serif; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.04); text-align: left;">
+  <div style="font-weight: 955; color: ${c.title} !important; text-transform: uppercase; font-size: 13px; letter-spacing: 0.05em; margin-bottom: 6px;">
+    📈 4-COLUMN STRATEGIC EXECUTION MATRIX
+  </div>
+  <div style="font-size: 12px; color: ${c.desc} !important; font-weight: 700; margin-bottom: 12px; line-height: 1.5;">
+    Map out four crucial steps, quadrants, or resources for strategic execution.
+  </div>
+  <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px;">
+    <div style="background-color: #fff !important; background: #fff !important; border: 1.5px solid ${c.inner} !important; border-radius: 12px; padding: 12px; min-height: 60px;">
+      <div style="font-weight: 800; color: ${c.title} !important; font-size: 11px; margin-bottom: 4px; text-transform: uppercase;">Quadrant 1</div>
+      <div style="font-size: 13px; color: #0f172a !important;" class="col-box">Detail point 1...</div>
+    </div>
+    <div style="background-color: #fff !important; background: #fff !important; border: 1.5px solid ${c.inner} !important; border-radius: 12px; padding: 12px; min-height: 60px;">
+      <div style="font-weight: 800; color: ${c.title} !important; font-size: 11px; margin-bottom: 4px; text-transform: uppercase;">Quadrant 2</div>
+      <div style="font-size: 13px; color: #0f172a !important;" class="col-box">Detail point 2...</div>
+    </div>
+    <div style="background-color: #fff !important; background: #fff !important; border: 1.5px solid ${c.inner} !important; border-radius: 12px; padding: 12px; min-height: 60px;">
+      <div style="font-weight: 800; color: ${c.title} !important; font-size: 11px; margin-bottom: 4px; text-transform: uppercase;">Quadrant 3</div>
+      <div style="font-size: 13px; color: #0f172a !important;" class="col-box">Detail point 3...</div>
+    </div>
+    <div style="background-color: #fff !important; background: #fff !important; border: 1.5px solid ${c.inner} !important; border-radius: 12px; padding: 12px; min-height: 60px;">
+      <div style="font-weight: 800; color: ${c.title} !important; font-size: 11px; margin-bottom: 4px; text-transform: uppercase;">Quadrant 4</div>
+      <div style="font-size: 13px; color: #0f172a !important;" class="col-box">Detail point 4...</div>
+    </div>
+  </div>
+</div>
+<p><br></p>
+`;
+
+    if (editorRef.current) {
+      editorRef.current.focus();
+      if (savedRange.current) {
+        const selection = window.getSelection();
+        selection?.removeAllRanges();
+        selection?.addRange(savedRange.current);
+      } else {
+        const range = document.createRange();
+        range.selectNodeContents(editorRef.current);
+        range.collapse(false);
+        const selection = window.getSelection();
+        selection?.removeAllRanges();
+        selection?.addRange(range);
+      }
+      document.execCommand('insertHTML', false, html);
+      updateTopic(selectedTopic.id, { content: editorRef.current.innerHTML });
+    }
+  };
+
   const insertProsConsCard = (theme = 'emerald') => {
     if (!selectedTopic) return;
     const configs: Record<string, { border: string; bg: string; title: string; desc: string; inner: string }> = {
@@ -3117,8 +3260,8 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
     const hasPipe = lines[0].includes('|');
     if (!isTable && !hasPipe) return null;
 
-    let html = `<div class="table-scroll-container" style="overflow-x: auto; max-width: 100%; -webkit-overflow-scrolling: touch; border-radius: 12px; margin: 8px 0 16px 0; border: 1px solid rgba(249, 115, 22, 0.4);">`;
-    html += `<table style="width: 100%; border-collapse: collapse; border: 2.5px solid rgba(249, 115, 22, 0.4) !important; font-size: 14px; border-radius: 12px; overflow: hidden; display: table;">`;
+    let html = `<div class="table-scroll-container" style="overflow-x: auto; max-width: 100%; -webkit-overflow-scrolling: touch; border-radius: 12px; margin: 8px 0 16px 0; border: 1px solid currentColor;">`;
+    html += `<table style="width: 100%; border-collapse: collapse; border: 1.5px solid currentColor; font-size: 14px; border-radius: 12px; overflow: hidden; display: table;">`;
 
     let inHeader = true;
     let headers: string[] = [];
@@ -3148,9 +3291,9 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
     }
 
     if (headers.length > 0) {
-      html += `<thead><tr style="background-color: #f97316; color: white;">`;
+      html += `<thead><tr style="background-color: var(--theme-color, #cbd5e1); color: inherit;">`;
       for (const h of headers) {
-        html += `<th style="padding: 12px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; border: 2.5px solid rgba(249, 115, 22, 0.4) !important;">${h}</th>`;
+        html += `<th style="padding: 12px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; border: 1.5px solid currentColor;">${h}</th>`;
       }
       html += `</tr></thead>`;
     }
@@ -3163,7 +3306,7 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
         let cellContent = row[i] || '';
         // Convert any raw '<br>' text to actual tags
         cellContent = cellContent.replace(/&lt;br\s*\/?&gt;/gi, '<br/>').replace(/<br\s*\/?>/gi, '<br/>');
-        html += `<td style="padding: 12px; border: 2px solid rgba(249, 115, 22, 0.4) !important; min-height: 24px; transition: background 0.2s; text-align: left; font-weight: 500; font-size: 13px; color: #0f172a;">${cellContent}</td>`;
+        html += `<td style="padding: 12px; border: 1.5px solid currentColor; min-height: 24px; transition: background 0.2s; text-align: left; font-weight: 500; font-size: 13px;">${cellContent}</td>`;
       }
       html += '</tr>';
     }
@@ -4127,7 +4270,7 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
                   <input 
                       value={selectedTopic.title} 
                       onChange={(e) => updateTopic(selectedTopic.id, { title: e.target.value })}
-                      className={`flex-1 text-2xl md:text-4xl font-black ${forceLightBg ? 'text-slate-900 border-slate-300' : 'text-slate-100 border-orange-500/20'} bg-transparent outline-none p-2 border-b-2 focus:border-orange-500 transition-all min-w-0 text-center uppercase tracking-wide`}
+                      className={`flex-1 text-2xl md:text-4xl font-black text-slate-900 border-slate-300 bg-white/40 backdrop-blur-sm shadow-sm drop-shadow-sm outline-none p-2 border-b-2 focus:border-orange-500 focus:text-slate-900 focus:bg-white focus:shadow-md transition-all min-w-0 text-center uppercase tracking-wide rounded-t-xl`}
                       placeholder="Topic Title..."
                   />
                   <button
@@ -4272,6 +4415,33 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
 
                     <div className="h-6 w-px bg-white/30 mx-1" />
 
+                    <select 
+                      value={selectedTopic.paperStyle || 'none'}
+                      onChange={(e) => updateTopic(selectedTopic.id, { paperStyle: e.target.value })}
+                      className="bg-white/40 px-2 py-1.5 rounded-lg text-[10px] font-bold border-none outline-none cursor-pointer hover:bg-white/60 transition-colors uppercase shrink-0"
+                      title="Topic Paper Style"
+                    >
+                      <option value="none">Default Paper</option>
+                      {PAPER_STYLES.filter(p => p.id !== 'none').map(p => (
+                        <option key={p.id} value={p.id}>{p.name}</option>
+                      ))}
+                    </select>
+
+                    {selectedTopic.content && selectedTopic.content.includes('-col-wrapper') && (
+                      <div className="flex items-center gap-1 bg-white/40 px-2 py-1.5 rounded-lg shrink-0" title="Adjust spacing between grid columns">
+                        <Columns size={12} className="text-slate-600" />
+                        <input 
+                          type="range" 
+                          min="0" 
+                          max="60" 
+                          step="4"
+                          value={selectedTopic.gridSpacing ?? 12} 
+                          onChange={(e) => updateTopic(selectedTopic.id, { gridSpacing: parseInt(e.target.value) })}
+                          className="w-16 h-1 bg-slate-300 rounded-lg appearance-none cursor-pointer"
+                        />
+                      </div>
+                    )}
+
                     <button 
                       onClick={() => toggleDropdown('moreTools')}
                       className={`p-1.5 rounded-lg font-black text-[10px] uppercase transition-all flex items-center gap-1 ${showMoreTools ? 'bg-orange-500 text-white shadow-lg' : 'bg-white/40 text-slate-600 hover:bg-white/60'}`}
@@ -4285,15 +4455,111 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
                       <button onClick={(e) => { e.preventDefault(); document.execCommand('redo'); }} className="p-1.5 hover:bg-white rounded text-slate-600 transition-colors" title="Redo"><Redo size={14} /></button>
                     </div>
 
+                    <button 
+                      onClick={enhanceWithAI} 
+                      onMouseDown={(e) => e.preventDefault()}
+                      disabled={isAILoading} 
+                      className="flex items-center gap-2 px-3 py-1.5 bg-indigo-500 text-white rounded-lg text-xs font-bold hover:bg-indigo-600 shadow-sm transition-colors disabled:opacity-50 font-sans"
+                      title="Highlight/select some text first to only enhance that selection, or do not select anything to enhance the entire note."
+                    >
+                      {isAILoading ? <Loader2 size={14} className="animate-spin" /> : <Wand2 size={14} />}
+                      AI Enhance
+                    </button>
+
+                    <div className="h-6 w-px bg-white/30 mx-1" />
+
+
+                    <div className="relative z-[203]">
+                      <button 
+                        onClick={() => toggleDropdown('pageOptions')}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all border shrink-0 ${showPageOptions ? 'bg-orange-500 border-orange-600 text-white shadow-md' : 'bg-white/40 border-white/20 text-slate-700 hover:bg-white/60'}`}
+                        title="Page & View Options"
+                      >
+                        <Settings2 size={14} className={showPageOptions ? 'animate-spin-slow' : ''} />
+                        Options
+                        <ChevronDown size={12} className={`transition-transform duration-200 ${showPageOptions ? 'rotate-180' : ''}`} />
+                      </button>
+
+                      {showPageOptions && (
+                        <div className="absolute left-0 top-full mt-2 w-56 bg-white rounded-2xl shadow-2xl border border-slate-200 p-2.5 flex flex-col gap-2 z-[300] animate-in slide-in-from-top-2 duration-150">
+                          <div className="px-2 py-1 text-[10px] font-black text-slate-400 border-b border-slate-50 uppercase tracking-wider">Display & Tools</div>
+                          
+                          <button
+                            onClick={() => { setIsTableResizeLocked(!isTableResizeLocked); setShowPageOptions(false); }}
+                            className="flex items-center justify-between p-2 hover:bg-slate-50 rounded-xl transition-colors group"
+                          >
+                            <div className="flex items-center gap-2">
+                              {isTableResizeLocked ? <Lock size={14} className="text-slate-400" /> : <Unlock size={14} className="text-orange-500" />}
+                              <span className="text-xs font-bold text-slate-700">Column Resizing</span>
+                            </div>
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${isTableResizeLocked ? 'bg-slate-100 text-slate-500' : 'bg-orange-100 text-orange-600'}`}>
+                              {isTableResizeLocked ? 'Locked' : 'Unlocked'}
+                            </span>
+                          </button>
+
+                          <button
+                            onClick={() => { setShowRuler(!showRuler); setShowPageOptions(false); }}
+                            className="flex items-center justify-between p-2 hover:bg-slate-50 rounded-xl transition-colors group"
+                          >
+                            <div className="flex items-center gap-2">
+                              <Ruler size={14} className={showRuler ? "text-orange-600" : "text-slate-400"} />
+                              <span className="text-xs font-bold text-slate-700">Ruler Guides</span>
+                            </div>
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${showRuler ? 'bg-orange-100 text-orange-600' : 'bg-slate-100 text-slate-500'}`}>
+                              {showRuler ? 'ON' : 'OFF'}
+                            </span>
+                          </button>
+
+                          <div className="h-px bg-slate-100 my-0.5" />
+
+                          <label className="flex items-center gap-2 p-2 hover:bg-slate-50 rounded-xl cursor-pointer transition-colors">
+                            <FileUp size={14} className="text-blue-500" />
+                            <span className="text-xs font-bold text-slate-700">Upload File</span>
+                            <input 
+                              type="file" 
+                              accept=".pdf,.doc,.docx,.xls,.xlsx,image/*,audio/*,video/*"
+                              onChange={(e) => { handleFileUpload(e); setShowPageOptions(false); }}
+                              className="hidden"
+                            />
+                          </label>
+
+                          {selectedTopic && (
+                            <button 
+                              onClick={() => { handleShareTopic(selectedTopic); setShowPageOptions(false); }}
+                              disabled={sharingTopicId === selectedTopic.id}
+                              className="flex items-center gap-2 p-2 hover:bg-slate-50 rounded-xl text-slate-700 transition-colors w-full"
+                            >
+                              <Share2 size={14} className={`text-orange-500 ${sharingTopicId === selectedTopic.id ? "animate-spin" : ""}`} />
+                              <span className="text-xs font-bold">Share Topic</span>
+                            </button>
+                          )}
+
+                          <button
+                            onClick={() => { setForceLightBg(!forceLightBg); setShowPageOptions(false); }}
+                            className="flex items-center justify-between p-2 hover:bg-slate-50 rounded-xl transition-colors w-full"
+                          >
+                            <div className="flex items-center gap-2">
+                              <GraduationCap size={14} className={forceLightBg ? "text-emerald-500" : "text-slate-400"} />
+                              <span className="text-xs font-bold text-slate-700">Plain Light Mode</span>
+                            </div>
+                            <div className={`w-8 h-4 rounded-full relative transition-colors ${forceLightBg ? 'bg-emerald-500' : 'bg-slate-200'}`}>
+                              <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all ${forceLightBg ? 'left-4.5' : 'left-0.5'}`} />
+                            </div>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="h-6 w-px bg-white/30 mx-1" />
+
                     {showMoreTools && (
                       <div className="flex flex-wrap items-center gap-2 animate-in fade-in slide-in-from-left-2 duration-300">
                         <div className="h-6 w-px bg-white/30 mx-1" />
-                        
                         <div className="flex gap-1 bg-white/40 p-1 rounded-lg shrink-0">
                           <div className="relative group/list z-[150] hover:z-[300]">
                             <button className="p-1.5 hover:bg-white rounded transition-colors text-slate-700 font-bold text-xs flex items-center gap-1" title="Bullets" onMouseDown={(e) => e.preventDefault()}><List size={14} /> <span className="text-[10px]">▼</span></button>
                             <div className="absolute hidden group-hover/list:grid grid-cols-5 gap-1 top-full left-0 bg-white shadow-xl border border-slate-200 p-2 rounded-xl z-[9999] w-[180px]">
-                               {['•','🌹','⭐','🚗','❤️','✅','✨','🔥','🔮','🍃','🎵','👑','☀️','🌙','💎'].map(marker => (
+                               {(selectedTopic?.customBullets || ['•','🌹','⭐','🚗','❤️','✅','✨','🔥','🔮','🍃','🎵','👑','☀️','🌙','💎']).map(marker => (
                                  <button key={marker} onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }} onClick={() => {
                                     document.execCommand('insertUnorderedList');
                                     if (marker !== '•') {
@@ -4345,7 +4611,7 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
                           <div className="relative group/list3 z-[150] hover:z-[300]">
                             <button className="p-1.5 hover:bg-white rounded transition-colors text-slate-700 font-bold text-xs flex items-center gap-1" title="Checklist" onMouseDown={(e) => e.preventDefault()}><CheckSquare size={14} /> <span className="text-[10px]">▼</span></button>
                             <div className="absolute hidden group-hover/list3:grid grid-cols-2 gap-1 top-full left-0 bg-white shadow-xl border border-slate-200 p-2 rounded-xl z-[9999] w-[140px]">
-                               {['⬜', '[ ]', '🔳', '⚪', '🔴', '❎', '✓'].map((marker, idx) => (
+                               {(selectedTopic?.customChecklists || ['⬜', '[ ]', '🔳', '⚪', '🔴', '❎', '✓']).map((marker, idx) => (
                                  <button key={idx} onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }} onClick={() => {
                                     document.execCommand('insertUnorderedList');
                                     setTimeout(() => {
@@ -4482,89 +4748,7 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
                       </div>
                     )}
 
-                    <div className="h-6 w-px bg-white/30 mx-1" />
-
-                    {/* Lock / Unlock Resizing Column Switch */}
-                    <button
-                      onClick={() => setIsTableResizeLocked(!isTableResizeLocked)}
-                      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-all shrink-0 select-none ${
-                        isTableResizeLocked 
-                          ? 'bg-slate-50 border border-slate-200 text-slate-500 hover:bg-slate-100' 
-                          : 'bg-orange-500 border border-transparent text-white hover:bg-orange-600 shadow-sm'
-                      }`}
-                      title={isTableResizeLocked ? "Table borders are locked to prevent accidental resizing. Click to unlock!" : "Table borders are unlocked. Hover over vertical lines to resize!"}
-                    >
-                      {isTableResizeLocked ? <Lock size={12} className="text-slate-400" /> : <Unlock size={12} className="text-white" />}
-                      <span className="hidden leading-none sm:inline">{isTableResizeLocked ? "Locked" : "Unlocked"}</span>
-                    </button>
-
-                    {/* Ruler Guideline Switch */}
-                    <button
-                      onClick={() => setShowRuler(!showRuler)}
-                      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-all shrink-0 select-none ${
-                        showRuler 
-                          ? 'bg-orange-100 hover:bg-orange-200 border border-orange-200 text-orange-700' 
-                          : 'bg-slate-50 border border-slate-200 text-slate-400 hover:bg-slate-100'
-                      }`}
-                      title={showRuler ? "Guides visible on paper boundaries" : "Alignment guides are hidden. Click to show ruler!"}
-                    >
-                      <Ruler size={12} className={showRuler ? "text-orange-600 animate-pulse" : "text-slate-400"} />
-                      <span className="hidden leading-none sm:inline">Ruler</span>
-                    </button>
-
-                    <div className="h-6 w-px bg-white/30 mx-1" />
-                    
-                    <div className="flex gap-1 bg-blue-500/10 hover:bg-blue-500/20 px-2 py-1 rounded-lg border border-blue-500/30 transition-all">
-                      <label 
-                        className="p-1 hover:bg-white/50 rounded flex items-center justify-center gap-2 cursor-pointer text-blue-700 font-bold text-xs" 
-                        title="Upload File / Media (PDF, Images, MP3, MP4, Docs)"
-                      >
-                        <FileUp size={16} className="text-blue-600" />
-                        <span>Upload File</span>
-                        <input 
-                          type="file" 
-                          accept=".pdf,.doc,.docx,.xls,.xlsx,image/*,audio/*,video/*"
-                          onChange={handleFileUpload}
-                          className="hidden"
-                        />
-                      </label>
-                    </div>
-
-                    <div className="ml-auto flex items-center gap-2 flex-wrap justify-end">
-                      {selectedTopic && (
-                        <button 
-                          onClick={() => handleShareTopic(selectedTopic)}
-                          disabled={sharingTopicId === selectedTopic.id}
-                          className="flex items-center gap-2 px-3 py-1.5 bg-orange-50 hover:bg-orange-100 text-orange-600 border border-orange-200 rounded-lg text-xs font-bold shadow-sm transition-all font-sans shrink-0 disabled:opacity-50"
-                          title="Share this note"
-                        >
-                          <Share2 size={14} className={sharingTopicId === selectedTopic.id ? "animate-spin" : ""} />
-                          <span className="hidden sm:inline">Share</span>
-                        </button>
-                      )}
-
-                      <button
-                        onClick={() => setForceLightBg(!forceLightBg)}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 border rounded-lg text-xs font-bold shadow-sm transition-all font-sans shrink-0 cursor-pointer ${
-                          forceLightBg 
-                            ? 'bg-emerald-500 border-emerald-600 text-white hover:bg-emerald-600 shadow-md shadow-emerald-500/20' 
-                            : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'
-                        }`}
-                        title={forceLightBg ? "Switch back to default/glass background design" : "Switch to plain high-contrast light background"}
-                      >
-                        <GraduationCap size={14} />
-                        <span>Plain Light: {forceLightBg ? "ON" : "OFF"}</span>
-                      </button>
-                      <button 
-                        onClick={enhanceWithAI} 
-                        onMouseDown={(e) => e.preventDefault()}
-                        disabled={isAILoading} 
-                        className="flex items-center gap-2 px-3 py-1.5 bg-indigo-500 text-white rounded-lg text-xs font-bold hover:bg-indigo-600 shadow-sm transition-colors disabled:opacity-50 font-sans"
-                        title="Highlight/select some text first to only enhance that selection, or do not select anything to enhance the entire note."
-                      >
-                        {isAILoading ? <Loader2 size={14} className="animate-spin" /> : <Wand2 size={14} />}
-                        AI Enhance
-                      </button>
+                    <div className="flex items-center gap-2 flex-wrap">
                       <div className="relative z-[200]">
                         <button 
                           onClick={() => toggleDropdown('export')}
@@ -4611,7 +4795,7 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
                         </button>
                         
                         {showTableToolsMenu && (
-                          <div className="absolute right-0 top-full mt-2 z-[250] w-56 bg-white rounded-2xl shadow-2xl border border-slate-200 p-2.5 flex flex-col gap-1.5 animate-in slide-in-from-top-2 duration-150">
+                          <div className="absolute left-0 top-full mt-2 z-[250] w-56 bg-white rounded-2xl shadow-2xl border border-slate-200 p-2.5 flex flex-col gap-1.5 animate-in slide-in-from-top-2 duration-150">
                             {activeTableCell ? (
                               <>
                                 <div className="px-2 py-1 text-[10px] font-black text-slate-400 uppercase tracking-wider">Word-Style Controls</div>
@@ -4679,7 +4863,7 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
                         )}
                       </div>
 
-                      {/* MORE Tools Dropdown (Includes AI Enhance, Upload File, Synthesis Cards, Q&A Board) */}
+                      {/* Formatting tools etc handled elsewhere or already visible */}
                       <div className="relative z-[200]">
                         <button 
                           onClick={() => toggleDropdown('more')}
@@ -4692,6 +4876,7 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
                         </button>
                         
                         {showMoreMenu && (
+
                           <>
                             {/* Backdrop overlay only visible on touch/mobile viewports to dismiss */}
                             <div className="md:hidden fixed inset-0 bg-slate-950/20 backdrop-blur-sm z-[999]" onClick={() => setShowMoreMenu(false)} />
@@ -4870,6 +5055,70 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
                                 ))}
                               </div>
                             </div>
+                            
+                            <div className="h-px bg-slate-100" />
+                            
+                            <div>
+                              <div className="text-[10px] font-black uppercase text-slate-400 tracking-wider mb-2 flex items-center gap-1.5">
+                                <LayoutGrid size={12} className="text-blue-500" />
+                                Insert 3-Column Framework
+                              </div>
+                              <div className="grid grid-cols-5 gap-1.5 mb-4">
+                                {[
+                                  { key: 'emerald', color: 'bg-emerald-500', border: 'border-emerald-200', bg: 'bg-emerald-50', name: 'Emerald' },
+                                  { key: 'rose', color: 'bg-rose-500', border: 'border-rose-200', bg: 'bg-rose-50', name: 'Rose' },
+                                  { key: 'blue', color: 'bg-blue-500', border: 'border-blue-200', bg: 'bg-blue-50', name: 'Blue' },
+                                  { key: 'slate', color: 'bg-slate-500', border: 'border-slate-300', bg: 'bg-slate-50', name: 'Slate' },
+                                  { key: 'violet', color: 'bg-purple-500', border: 'border-purple-200', bg: 'bg-purple-50', name: 'Violet' },
+                                  { key: 'gold', color: 'bg-yellow-400', border: 'border-yellow-200', bg: 'bg-yellow-50', name: 'Gold' },
+                                  { key: 'orange', color: 'bg-orange-500', border: 'border-orange-200', bg: 'bg-orange-50', name: 'Orange' },
+                                  { key: 'teal', color: 'bg-teal-500', border: 'border-teal-200', bg: 'bg-teal-50', name: 'Teal' },
+                                  { key: 'fuchsia', color: 'bg-fuchsia-500', border: 'border-fuchsia-200', bg: 'bg-fuchsia-50', name: 'Fuchsia' },
+                                  { key: 'sky', color: 'bg-sky-500', border: 'border-sky-200', bg: 'bg-sky-50', name: 'Sky' }
+                                ].map((theme) => (
+                                  <button 
+                                    key={theme.key}
+                                    onClick={() => { insertThreeColumnGrid(theme.key); setShowMoreMenu(false); }}
+                                    className={`w-7 h-7 rounded-full border ${theme.border} ${theme.bg} flex items-center justify-center hover:scale-110 active:scale-95 transition-all animate-in zoom-in-50 duration-200`}
+                                    title={`${theme.name} 3-Column Framework`}
+                                  >
+                                    <span className={`w-3 h-3 rounded-full ${theme.color}`} />
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                            
+                            <div className="h-px bg-slate-100" />
+                            
+                            <div>
+                              <div className="text-[10px] font-black uppercase text-slate-400 tracking-wider mb-2 flex items-center gap-1.5">
+                                <Grid3X3 size={12} className="text-purple-500" />
+                                Insert 4-Column Matrix
+                              </div>
+                              <div className="grid grid-cols-5 gap-1.5">
+                                {[
+                                  { key: 'emerald', color: 'bg-emerald-500', border: 'border-emerald-200', bg: 'bg-emerald-50', name: 'Emerald' },
+                                  { key: 'rose', color: 'bg-rose-500', border: 'border-rose-200', bg: 'bg-rose-50', name: 'Rose' },
+                                  { key: 'blue', color: 'bg-blue-500', border: 'border-blue-200', bg: 'bg-blue-50', name: 'Blue' },
+                                  { key: 'slate', color: 'bg-slate-500', border: 'border-slate-300', bg: 'bg-slate-50', name: 'Slate' },
+                                  { key: 'violet', color: 'bg-purple-500', border: 'border-purple-200', bg: 'bg-purple-50', name: 'Violet' },
+                                  { key: 'gold', color: 'bg-yellow-400', border: 'border-yellow-200', bg: 'bg-yellow-50', name: 'Gold' },
+                                  { key: 'orange', color: 'bg-orange-500', border: 'border-orange-200', bg: 'bg-orange-50', name: 'Orange' },
+                                  { key: 'teal', color: 'bg-teal-500', border: 'border-teal-200', bg: 'bg-teal-50', name: 'Teal' },
+                                  { key: 'fuchsia', color: 'bg-fuchsia-500', border: 'border-fuchsia-200', bg: 'bg-fuchsia-50', name: 'Fuchsia' },
+                                  { key: 'sky', color: 'bg-sky-500', border: 'border-sky-200', bg: 'bg-sky-50', name: 'Sky' }
+                                ].map((theme) => (
+                                  <button 
+                                    key={theme.key}
+                                    onClick={() => { insertFourColumnGrid(theme.key); setShowMoreMenu(false); }}
+                                    className={`w-7 h-7 rounded-full border ${theme.border} ${theme.bg} flex items-center justify-center hover:scale-110 active:scale-95 transition-all animate-in zoom-in-50 duration-200`}
+                                    title={`${theme.name} 4-Column Matrix`}
+                                  >
+                                    <span className={`w-3 h-3 rounded-full ${theme.color}`} />
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
                           </div>
                           </>
                         )}
@@ -4898,9 +5147,11 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
                         {isEditorStudyPlanLoading ? <Loader2 size={14} className="animate-spin" /> : <Wand2 size={14} />}
                         Study Plan
                       </button>
+
                     </div>
                 </div>
                 )}
+
 
                 {pickerPos && (() => {
                   const activeCard = getActiveCardElement();
@@ -5040,9 +5291,14 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
                   const editorBorderColor = '#cbd5e1';
                   const editorCardBgColor = forceLightBg ? '#ffffff' : 'rgba(255, 255, 255, 0.95)';
                   
+                  const activeTextFontFamily = selectedTopic?.textFontFamily || textFontFamily;
+                  const activeTextFontSize = selectedTopic?.textFontSize || textFontSize;
+                  const activeHeaderFontFamily = selectedTopic?.headerFontFamily || 'Space Grotesk';
+                  const activeHeaderFontSize = selectedTopic?.headerFontSize || 20;
+
                   return (
                     <style dangerouslySetInnerHTML={{ __html: `
-                      .hide-native-scrollbar {
+                       .hide-native-scrollbar {
                         scrollbar-width: none !important;
                         -ms-overflow-style: none !important;
                         overflow-y: scroll !important;
@@ -5106,12 +5362,16 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
 
                       .editor-content {
                         color: ${editorTextColor};
+                        font-family: "${activeTextFontFamily}", sans-serif !important;
+                        font-size: ${activeTextFontSize}px !important;
                       }
                       
                       .editor-content p, 
                       .editor-content li, 
                       .editor-content div {
                         color: ${editorTextColor};
+                        font-family: "${activeTextFontFamily}", sans-serif !important;
+                        font-size: ${activeTextFontSize}px !important;
                       }
                       
                       .editor-content h1, 
@@ -5121,7 +5381,9 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
                       .editor-content h5, 
                       .editor-content h6 {
                         color: ${editorHeaderColor} !important;
-                        font-weight: 800 !important;
+                        font-family: "${activeHeaderFontFamily}", sans-serif !important;
+                        font-size: ${activeHeaderFontSize}px !important;
+                        font-weight: 850 !important;
                       }
                       
                       .editor-content table {
@@ -5131,7 +5393,7 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
 
                       .editor-content th, 
                       .editor-content td {
-                        border: 1.5px solid ${editorBorderColor} !important;
+                        border: 1.5px solid ${editorBorderColor};
                         padding: 12px 14px;
                       }
                       
@@ -5150,10 +5412,16 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
                       /* Synthesis Cards and QA Boards use the user-selected theme colors for their backgrounds, borders, and main layout natively! */
                       .editor-content .synthesis-card-wrapper, 
                       .editor-content .qa-board-wrapper {
+                        color: ${editorTextColor} !important;
                         border-radius: 20px !important;
                         padding: 20px !important;
                         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03) !important;
                         margin: 18px 0 !important;
+                      }
+
+                      .editor-content .three-col-wrapper > div:nth-child(3),
+                      .editor-content .four-col-wrapper > div:nth-child(3) {
+                        gap: ${selectedTopic?.gridSpacing ?? 12}px !important;
                       }
 
                       .editor-content .study-plan-card h1,
@@ -5352,8 +5620,8 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
                       }}
                       style={{ 
                         minHeight: '300px',
-                        fontSize: `${textFontSize}px`,
-                        fontFamily: textFontFamily
+                        fontSize: `${selectedTopic?.textFontSize || textFontSize}px`,
+                        fontFamily: selectedTopic?.textFontFamily || textFontFamily
                       }}
                       className={`editor-content editor-scrollbar w-full flex-1 outline-none p-8 rounded-3xl leading-relaxed font-medium transition-all focus:ring-4 focus:ring-orange-500/10 shadow-md ${
                         forceLightBg

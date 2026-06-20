@@ -14,6 +14,7 @@ import SelfLearningTable from "./components/SelfLearningTable";
 import { SharedContentFullView } from "./components/SharedContentFullView";
 import { RecycleBin } from "./components/RecycleBin";
 import { MaintenancePanel } from "./components/MaintenancePanel";
+import { TemplatesPanel } from "./components/TemplatesPanel";
 import Dashboard from "./components/Dashboard";
 import { FloatingToolbar } from "./components/FloatingToolbar";
 import {
@@ -207,8 +208,10 @@ const App: React.FC = () => {
         textFontFamily: "'Inter', sans-serif",
         textFontSize: 16,
         columns: DEFAULT_COLUMNS,
-        backgroundImage:
-          "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&q=80&w=2000",
+        backgroundImage: "solid-white",
+        backgroundDimOpacity: 0,
+        fontColor: '#0f172a',
+        dateTextColor: '#f97316'
       },
       attendance: {},
     };
@@ -844,7 +847,7 @@ const App: React.FC = () => {
             );
 
             // 4. Generic sync for settings (instant write to prevent delays)
-            saveData(currentUser.uid!, newData, true);
+            saveData(currentUser.uid!, newData, false);
 
             // 5. Sync Topics (DPSS and Self-Learning)
             const topicsToSave: {
@@ -1156,20 +1159,44 @@ const App: React.FC = () => {
 
   return (
     <div
-      className="h-screen flex font-sans overflow-hidden md:overflow-hidden transition-all duration-700 relative"
+      className={`h-screen flex font-sans overflow-hidden md:overflow-hidden transition-all duration-700 relative ${data.settings?.highContrastMode ? 'high-contrast-mode' : ''}`}
       style={{
         fontFamily: data.settings?.fontFamily || "'Inter', sans-serif",
-        backgroundColor: data.settings?.appBackgroundColor || "transparent",
-        color: data.settings?.fontColor || "inherit",
+        backgroundColor: data.settings?.appBackgroundColor || (data.settings?.backgroundImage === 'solid-white' ? "#ffffff" : "transparent"),
+        color: data.settings?.highContrastMode ? "#000000" : (data.settings?.fontColor || "inherit"),
+        ...(data.settings?.highContrastMode ? { lineHeight: 1.6 } : {})
       }}
     >
-      {/* Dynamic Blurred/Scalable Background Wallpaper Container */}
+      <style>
+        {`
+          .high-contrast-mode * {
+            color: #000000 !important;
+          }
+          .high-contrast-mode p,
+          .high-contrast-mode li,
+          .high-contrast-mode span.content-text,
+          .high-contrast-mode .text-heavy {
+             line-height: 1.6 !important;
+          }
+          .high-contrast-mode h1, 
+          .high-contrast-mode h2, 
+          .high-contrast-mode h3, 
+          .high-contrast-mode h4, 
+          .high-contrast-mode h5, 
+          .high-contrast-mode h6,
+          .high-contrast-mode input,
+          .high-contrast-mode textarea {
+            color: #000000 !important;
+          }
+        `}
+      </style>
       <div
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat pointer-events-none transition-all duration-700"
+        className={`absolute inset-0 bg-cover bg-center bg-no-repeat pointer-events-none transition-all duration-700`}
         style={{
-          backgroundImage: data.settings?.backgroundImage
+          backgroundImage: data.settings?.backgroundImage && data.settings.backgroundImage !== 'solid-white'
             ? `url(${data.settings.backgroundImage})`
             : "none",
+          backgroundColor: data.settings?.backgroundImage === 'solid-white' ? "#ffffff" : "transparent",
           filter: `blur(${data.settings?.backgroundImageBlur ?? 0}px)`,
           transform: data.settings?.backgroundImageBlur
             ? "scale(1.05)"
@@ -1272,6 +1299,16 @@ const App: React.FC = () => {
                 <DailyPerformanceCheck
                   data={data}
                   onUpdate={handleUpdate}
+                  students={activeStudents}
+                  onAddStudent={(defaults) => handleAddStudent(defaults)}
+                  onUpdateStudent={handleUpdateStudent}
+                  onDeleteStudent={handleDeleteStudent}
+                  onClearCategory={(cats) =>
+                    handleClearCategory(cats as StudentCategory[])
+                  }
+                  filters={filters}
+                  setFilters={setFilters}
+                  role={currentUser?.role || "Teacher"}
                 />
               )}
               {activeTab === Tab.Reminder && (
@@ -1323,6 +1360,14 @@ const App: React.FC = () => {
                       handleUpdateTopic(topics, topic, "selfLearning");
                     }
                   }}
+                  onOpenSidebar={() => setIsSidebarOpen(true)}
+                />
+              )}
+              {activeTab === Tab.Templates && (
+                <TemplatesPanel
+                  data={data}
+                  onUpdate={handleUpdate}
+                  setActiveTab={setActiveTab}
                   onOpenSidebar={() => setIsSidebarOpen(true)}
                 />
               )}

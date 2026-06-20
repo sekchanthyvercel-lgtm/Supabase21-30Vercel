@@ -74,6 +74,18 @@ const COLOR_PALETTES = [
   }
 ];
 
+const ABSTRACT_BACKGROUND_PRESETS = [
+  { name: 'Pure White', url: 'solid-white' },
+  { name: 'Aurora Velvet', url: 'https://images.unsplash.com/photo-1557683316-973673baf926?auto=format&fit=crop&q=80&w=2000' },
+  { name: 'Liquid Emerald', url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&q=80&w=2000' },
+  { name: 'Holographic Silk', url: 'https://images.unsplash.com/photo-1618005198143-e5283b519a7f?auto=format&fit=crop&q=80&w=2000' },
+  { name: 'Orchid Dream', url: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?auto=format&fit=crop&q=80&w=2000' },
+  { name: 'Pastel Ribbon', url: 'https://images.unsplash.com/photo-1550537687-c91072c4792d?auto=format&fit=crop&q=80&w=2000' },
+  { name: 'Neon Cyberpunk', url: 'https://images.unsplash.com/photo-1563089145-599997674d42?auto=format&fit=crop&q=80&w=2000' },
+  { name: 'Minimal Alabaster', url: 'https://images.unsplash.com/photo-1517816743773-6e0fd518b4a6?auto=format&fit=crop&q=80&w=2000' },
+  { name: 'Abstract Nebula', url: 'https://images.unsplash.com/photo-1506318137071-a8e063b4bec0?auto=format&fit=crop&q=80&w=2000' }
+];
+
 const WALLPAPER_PRESETS_GROUPED = {
   'Light Purple': [
     { name: 'Lavender Mist', url: 'https://images.unsplash.com/photo-1550537687-c91072c4792d?auto=format&fit=crop&q=80&w=2000' },
@@ -168,17 +180,26 @@ export const SettingsModal: React.FC<Props> = ({ isOpen, onClose, settings, onUp
     textFontFamily: settings?.textFontFamily || 'ui-sans-serif, system-ui, -apple-system, sans-serif',
     textFontSize: settings?.textFontSize || 16,
     fontColor: settings?.fontColor || '#0f172a',
-    appBackgroundColor: settings?.appBackgroundColor || '',
+    appBackgroundColor: settings?.appBackgroundColor || (settings?.backgroundImage === 'solid-white' ? '#ffffff' : ''),
     dateTextColor: settings?.dateTextColor || '#f97316',
     currency: settings?.currency || 'USD',
     exchangeRate: settings?.exchangeRate || 4000,
-    backgroundImage: settings?.backgroundImage,
+    backgroundImage: settings?.backgroundImage || 'solid-white',
     backgroundImageBlur: settings?.backgroundImageBlur || 0,
-    backgroundDimOpacity: settings?.backgroundDimOpacity !== undefined ? settings.backgroundDimOpacity : 20,
+    backgroundDimOpacity: settings?.backgroundDimOpacity !== undefined ? settings.backgroundDimOpacity : (settings?.backgroundImage === 'solid-white' ? 0 : 20),
     paperStyle: settings?.paperStyle || 'none',
     tableBorderThickness: settings?.tableBorderThickness || 2,
-    tableBorderColor: settings?.tableBorderColor || '#334155'
+    tableBorderColor: settings?.tableBorderColor || '#334155',
+    dailyPerformanceSymbol: settings?.dailyPerformanceSymbol || 'circle'
   });
+
+  const updateSettingsRealtimeMultiple = (updates: Partial<AppSettings>) => {
+    setLocalSettings(prev => {
+      const next = { ...prev, ...updates };
+      onUpdate({ ...settings, ...next });
+      return next;
+    });
+  };
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -731,10 +752,9 @@ export const SettingsModal: React.FC<Props> = ({ isOpen, onClose, settings, onUp
     if (file) {
       const reader = new FileReader();
       reader.onload = (event) => {
-        setLocalSettings(prev => ({
-          ...prev,
+        updateSettingsRealtimeMultiple({
           backgroundImage: event.target?.result as string
-        }));
+        });
       };
       reader.readAsDataURL(file);
     }
@@ -1037,6 +1057,22 @@ export const SettingsModal: React.FC<Props> = ({ isOpen, onClose, settings, onUp
                             className="w-full accent-blue-500 cursor-pointer"
                         />
                     </div>
+
+                    <div className="pt-3 border-t border-slate-200/50">
+                        <button
+                            type="button"
+                            onClick={() => setLocalSettings(prev => ({...prev, highContrastMode: !prev.highContrastMode}))}
+                            className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all ${localSettings.highContrastMode ? 'bg-black text-white border-black ring-2 ring-black/20' : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'}`}
+                        >
+                            <div className="flex flex-col items-start gap-0.5">
+                                <span className="text-sm font-black tracking-wide">High Contrast Mode</span>
+                                <span className={`text-[10px] font-semibold ${localSettings.highContrastMode ? 'text-slate-300' : 'text-slate-500'}`}>Forces pure black text and 1.6x line height</span>
+                            </div>
+                            <div className={`w-10 h-5 rounded-full p-0.5 transition-colors ${localSettings.highContrastMode ? 'bg-emerald-500' : 'bg-slate-200'}`}>
+                                <div className={`w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${localSettings.highContrastMode ? 'translate-x-5' : 'translate-x-0'}`} />
+                            </div>
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -1207,6 +1243,117 @@ export const SettingsModal: React.FC<Props> = ({ isOpen, onClose, settings, onUp
                 </div>
             </div>
 
+            {/* Daily Performance Checklist Setting */}
+            <div className="space-y-4">
+                <div className="flex items-center gap-2 text-slate-800 font-black mb-2">
+                    <Check size={18} className="text-orange-500" />
+                    <h3 className="tracking-wide">Daily Performance</h3>
+                </div>
+
+                <div className="bg-white/50 border border-white/60 p-4 rounded-2xl space-y-4 shadow-sm">
+                    <div>
+                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 pl-1">Select Symbol (15 Custom Shapes)</p>
+                        <div className="grid grid-cols-5 gap-2">
+                            {[
+                                { id: 'circle', label: 'Circle', icon: (color: string) => (
+                                    <svg viewBox="0 0 100 100" className="w-5.5 h-5.5">
+                                        <circle cx="50" cy="50" r="38" stroke={color} strokeWidth="10" fill="none" />
+                                    </svg>
+                                ) },
+                                { id: 'square', label: 'Square', icon: (color: string) => (
+                                    <svg viewBox="0 0 100 100" className="w-5.5 h-5.5">
+                                        <rect x="15" y="15" width="70" height="70" rx="14" stroke={color} strokeWidth="10" fill="none" />
+                                    </svg>
+                                ) },
+                                { id: 'star', label: 'Star', icon: (color: string) => (
+                                    <svg viewBox="0 0 100 100" className="w-5.5 h-5.5">
+                                        <path d="M50 8 L62 36 L92 38 L68 58 L76 88 L50 72 L24 88 L32 58 L8 38 L38 36 Z" stroke={color} strokeWidth="10" fill="none" strokeLinejoin="round" />
+                                    </svg>
+                                ) },
+                                { id: 'heart', label: 'Heart', icon: (color: string) => (
+                                    <svg viewBox="0 0 100 100" className="w-5.5 h-5.5">
+                                        <path d="M50 84 L18 52 C6 38 10 14 30 14 C40 14 46 22 50 28 C54 22 60 14 70 14 C90 14 94 38 82 52 Z" stroke={color} strokeWidth="10" fill="none" strokeLinejoin="round" />
+                                    </svg>
+                                ) },
+                                { id: 'diamond', label: 'Diamond', icon: (color: string) => (
+                                    <svg viewBox="0 0 100 100" className="w-5.5 h-5.5">
+                                        <path d="M50 12 L88 50 L50 88 L12 50 Z" stroke={color} strokeWidth="10" fill="none" strokeLinejoin="round" />
+                                    </svg>
+                                ) },
+                                { id: 'hexagon', label: 'Hexagon', icon: (color: string) => (
+                                    <svg viewBox="0 0 100 100" className="w-5.5 h-5.5">
+                                        <path d="M50 12 L85 32 L85 68 L50 88 L15 68 L15 32 Z" stroke={color} strokeWidth="10" fill="none" strokeLinejoin="round" />
+                                    </svg>
+                                ) },
+                                { id: 'triangle', label: 'Triangle', icon: (color: string) => (
+                                    <svg viewBox="0 0 100 100" className="w-5.5 h-5.5">
+                                        <path d="M50 15 L85 75 L15 75 Z" stroke={color} strokeWidth="10" fill="none" strokeLinejoin="round" />
+                                    </svg>
+                                ) },
+                                { id: 'shield', label: 'Shield', icon: (color: string) => (
+                                    <svg viewBox="0 0 100 100" className="w-5.5 h-5.5">
+                                        <path d="M22 20 L50 12 L78 20 L78 48 C78 66 50 84 50 84 C50 84 22 66 22 48 Z" stroke={color} strokeWidth="10" fill="none" strokeLinejoin="round" />
+                                    </svg>
+                                ) },
+                                { id: 'lightning', label: 'Bolt', icon: (color: string) => (
+                                    <svg viewBox="0 0 100 100" className="w-5.5 h-5.5">
+                                        <path d="M54 10 L24 50 L46 50 L36 88 L74 38 L50 38 Z" stroke={color} strokeWidth="10" fill="none" strokeLinejoin="round" />
+                                    </svg>
+                                ) },
+                                { id: 'crown', label: 'Crown', icon: (color: string) => (
+                                    <svg viewBox="0 0 100 100" className="w-5.5 h-5.5">
+                                        <path d="M15 75 L22 35 L38 52 L50 24 L62 52 L78 35 L85 75 Z" stroke={color} strokeWidth="10" fill="none" strokeLinejoin="round" />
+                                    </svg>
+                                ) },
+                                { id: 'moon', label: 'Moon', icon: (color: string) => (
+                                    <svg viewBox="0 0 100 100" className="w-5.5 h-5.5">
+                                        <path d="M35 25 C48 25 65 35 68 52 C71 68 55 78 42 78 C59 78 74 67 74 49 C74 31 55 18 35 25 Z" stroke={color} strokeWidth="10" fill="none" strokeLinejoin="round" />
+                                    </svg>
+                                ) },
+                                { id: 'sparkle', label: 'Sparkle', icon: (color: string) => (
+                                    <svg viewBox="0 0 100 100" className="w-5.5 h-5.5">
+                                        <path d="M50 15 Q50 50 85 50 Q50 50 50 85 Q50 50 15 50 Q50 50 50 15 Z" stroke={color} strokeWidth="10" fill="none" strokeLinejoin="round" />
+                                    </svg>
+                                ) },
+                                { id: 'octagon', label: 'Octagon', icon: (color: string) => (
+                                    <svg viewBox="0 0 100 100" className="w-5.5 h-5.5">
+                                        <path d="M34 15 L66 15 L85 34 L85 66 L66 85 L34 85 L15 66 L15 34 Z" stroke={color} strokeWidth="10" fill="none" strokeLinejoin="round" />
+                                    </svg>
+                                ) },
+                                { id: 'cross', label: 'Cross', icon: (color: string) => (
+                                    <svg viewBox="0 0 100 100" className="w-5.5 h-5.5">
+                                        <path d="M36 18 L64 18 L64 36 L82 36 L82 64 L64 64 L64 82 L36 82 L36 64 L18 64 L18 36 L36 36 Z" stroke={color} strokeWidth="10" fill="none" strokeLinejoin="round" />
+                                    </svg>
+                                ) },
+                                { id: 'cloud', label: 'Cloud', icon: (color: string) => (
+                                    <svg viewBox="0 0 100 100" className="w-5.5 h-5.5">
+                                        <path d="M32 64 C21 64 16 55 21 45 C26 35 38 35 44 43 C49 31 66 31 72 43 C79 43 83 51 79 59 C75 64 69 64 69 64 L32 64" stroke={color} strokeWidth="10" fill="none" strokeLinejoin="round" />
+                                    </svg>
+                                ) }
+                            ].map(option => {
+                                const isSelected = (localSettings.dailyPerformanceSymbol || 'circle') === option.id;
+                                return (
+                                    <button
+                                        key={option.id}
+                                        type="button"
+                                        onClick={() => setLocalSettings(prev => ({...prev, dailyPerformanceSymbol: option.id as any}))}
+                                        className={`flex flex-col items-center justify-center p-2 rounded-xl border-2 transition-all hover:scale-105 ${isSelected ? 'border-orange-500 bg-orange-500/5 text-orange-600 font-extrabold shadow-xs' : 'border-slate-200/60 bg-white/40 text-slate-500 hover:border-slate-350'}`}
+                                    >
+                                        <div className="mb-1.5 flex items-center justify-center">
+                                            {option.icon(isSelected ? '#f97316' : '#64748b')}
+                                        </div>
+                                        <span className="text-[9.5px] tracking-tight">{option.label}</span>
+                                        {isSelected && (
+                                            <span className="mt-1 w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" />
+                                        )}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             {/* Background Customization */}
             <div className="space-y-4">
                 <div className="flex items-center gap-2 text-slate-800 font-black mb-2">
@@ -1215,22 +1362,63 @@ export const SettingsModal: React.FC<Props> = ({ isOpen, onClose, settings, onUp
                 </div>
 
                 <div className="bg-white/50 border border-white/60 p-4 rounded-2xl space-y-4 shadow-sm">
+                    {/* Predefined High-Quality Background Presets */}
+                    <div className="space-y-2 border-b border-slate-200/50 pb-4">
+                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest pl-1 mb-2">Background Presets (Abstract & Professional)</p>
+                        <div className="grid grid-cols-4 gap-2">
+                            {ABSTRACT_BACKGROUND_PRESETS.map((preset) => {
+                                const isActive = localSettings.backgroundImage === preset.url;
+                                return (
+                                    <button
+                                        type="button"
+                                        key={preset.name}
+                                        onClick={() => {
+                                            const updates: Partial<AppSettings> = { backgroundImage: preset.url };
+                                            if (preset.url === 'solid-white') {
+                                                updates.backgroundDimOpacity = 0;
+                                                updates.appBackgroundColor = '#ffffff';
+                                            }
+                                            updateSettingsRealtimeMultiple(updates);
+                                        }}
+                                        className={`group relative h-14 rounded-xl overflow-hidden border text-left transition-all ${isActive ? 'ring-2 ring-emerald-500 border-transparent scale-95 shadow shadow-emerald-500/25' : 'border-slate-200/60 hover:border-slate-300 hover:scale-[1.03]'}`}
+                                        title={preset.name}
+                                    >
+                                        {preset.url === 'solid-white' ? (
+                                            <div className="absolute inset-0 bg-white" />
+                                        ) : (
+                                            <img src={preset.url} className="absolute inset-0 w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" alt={preset.name} />
+                                        )}
+                                        <div className="absolute inset-0 bg-slate-950/20 group-hover:bg-slate-950/10 transition-colors" />
+                                        <div className="absolute bottom-1 left-1 right-1 bg-black/45 backdrop-blur-[1px] px-1 py-0.5 rounded-[4px]">
+                                            <p className="text-[8px] font-black text-white leading-tight truncate text-center drop-shadow-sm">{preset.name}</p>
+                                        </div>
+                                        {isActive && (
+                                            <div className="absolute top-1 right-1 bg-emerald-500 text-white rounded-full p-0.5 shadow-sm">
+                                                <Check size={8} strokeWidth={4} />
+                                            </div>
+                                        )}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+
                     {/* Preset wallpapers selection */}
-                    <div className="space-y-2">
-                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest pl-1 mb-2">Preset Wallpapers</p>
-                        <div className="space-y-6 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
+                    <div className="space-y-2 border-b border-slate-200/50 pb-4">
+                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest pl-1 mb-2">Other Wallpaper Presets</p>
+                        <div className="space-y-4 max-h-[220px] overflow-y-auto pr-2 custom-scrollbar">
                             {Object.entries(WALLPAPER_PRESETS_GROUPED).map(([category, presets]) => (
-                                <div key={category}>
-                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1 mb-2">{category}</p>
-                                    <div className="grid grid-cols-2 gap-2 border border-slate-200/50 p-1.5 rounded-xl bg-white/40">
+                                <div key={category} className="space-y-1">
+                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest pl-1 mb-1">{category}</p>
+                                    <div className="grid grid-cols-2 gap-1.5 border border-slate-200/50 p-1.5 rounded-xl bg-white/40">
                                         {presets.map((preset) => {
                                             const isActive = localSettings.backgroundImage === preset.url;
                                             return (
                                                 <button
                                                     type="button"
                                                     key={preset.name}
-                                                    onClick={() => setLocalSettings(prev => ({ ...prev, backgroundImage: preset.url }))}
-                                                    className={`group relative h-14 rounded-lg overflow-hidden border text-left transition-all ${isActive ? 'ring-2 ring-emerald-500 border-transparent shadow shadow-emerald-500/20' : 'border-slate-200/60 hover:border-slate-300'}`}
+                                                    onClick={() => updateSettingsRealtimeMultiple({ backgroundImage: preset.url })}
+                                                    className={`group relative h-11 rounded-lg overflow-hidden border text-left transition-all ${isActive ? 'ring-2 ring-emerald-500 border-transparent shadow shadow-emerald-500/20' : 'border-slate-200/60 hover:border-slate-300'}`}
                                                 >
                                                     <img src={preset.url} className="absolute inset-0 w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" alt={preset.name} />
                                                     <div className="absolute inset-0 bg-slate-905/40 group-hover:bg-slate-905/30 transition-colors" />
@@ -1265,7 +1453,7 @@ export const SettingsModal: React.FC<Props> = ({ isOpen, onClose, settings, onUp
                         {localSettings.backgroundImage && (
                             <button 
                                 type="button"
-                                onClick={() => setLocalSettings(prev => ({ ...prev, backgroundImage: undefined }))}
+                                onClick={() => updateSettingsRealtimeMultiple({ backgroundImage: undefined })}
                                 className="w-10 h-10 flex items-center justify-center bg-rose-50 text-rose-500 border border-rose-100 rounded-xl hover:bg-rose-500 hover:text-white transition-all"
                                 title="Remove Background"
                             >
@@ -1290,7 +1478,7 @@ export const SettingsModal: React.FC<Props> = ({ isOpen, onClose, settings, onUp
                         {/* Background Dimming Opacity slider */}
                         <div className="space-y-1.5">
                             <div className="flex justify-between text-[11px] font-bold text-slate-600 pl-1">
-                                <span>Dimming Overlay (Darken)</span>
+                                <span className="flex items-center gap-1.5">Dimming Overlay (Darken) <span className="text-[8px] text-emerald-600 font-extrabold uppercase animate-pulse">Live Feed</span></span>
                                 <span className="bg-slate-100 px-1.5 py-0.5 rounded text-[10px] text-slate-700 font-extrabold">{localSettings.backgroundDimOpacity ?? 20}%</span>
                             </div>
                             <input 
@@ -1298,16 +1486,16 @@ export const SettingsModal: React.FC<Props> = ({ isOpen, onClose, settings, onUp
                                 min="0" 
                                 max="100" 
                                 value={localSettings.backgroundDimOpacity ?? 20}
-                                onChange={(e) => setLocalSettings(prev => ({ ...prev, backgroundDimOpacity: parseInt(e.target.value) }))}
+                                onChange={(e) => updateSettingsRealtimeMultiple({ backgroundDimOpacity: parseInt(e.target.value) })}
                                 className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-emerald-500"
                             />
-                            <p className="text-[9px] text-slate-400 pl-1 leading-tight">Darkens the background. Set to 50% or more for maximum text contrast.</p>
+                            <p className="text-[9px] text-slate-400 pl-1 leading-tight">Darkens the background in real-time. Drag up for maximum legibility of white text.</p>
                         </div>
 
                         {/* Background Blur px slider */}
                         <div className="space-y-1.5">
                             <div className="flex justify-between text-[11px] font-bold text-slate-600 pl-1">
-                                <span>Background Blur Depth</span>
+                                <span className="flex items-center gap-1.5">Background Blur Depth <span className="text-[8px] text-indigo-600 font-extrabold uppercase animate-pulse">Live Feed</span></span>
                                 <span className="bg-slate-100 px-1.5 py-0.5 rounded text-[10px] text-slate-700 font-extrabold">{localSettings.backgroundImageBlur ?? 0}px</span>
                             </div>
                             <input 
@@ -1315,10 +1503,10 @@ export const SettingsModal: React.FC<Props> = ({ isOpen, onClose, settings, onUp
                                 min="0" 
                                 max="24" 
                                 value={localSettings.backgroundImageBlur ?? 0}
-                                onChange={(e) => setLocalSettings(prev => ({ ...prev, backgroundImageBlur: parseInt(e.target.value) }))}
+                                onChange={(e) => updateSettingsRealtimeMultiple({ backgroundImageBlur: parseInt(e.target.value) })}
                                 className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-500"
                             />
-                            <p className="text-[9px] text-slate-400 pl-1 leading-tight">Dissolves complex wallpaper details so you can focus entirely on your words.</p>
+                            <p className="text-[9px] text-slate-400 pl-1 leading-tight">Dissolves complex wallpaper details so you can focus entirely on your words in real-time.</p>
                         </div>
                     </div>
                 </div>
