@@ -917,8 +917,6 @@ export const TemplatesPanel: React.FC<TemplatesPanelProps> = ({
                   onChange={setFormContent}
                   className="flex-1 p-4 overflow-y-auto outline-none prose max-w-none custom-scrollbar"
                   placeholder="Select elements or type in text, use bullet configurations..."
-                  customBullets={formBullets}
-                  customChecklists={formChecklists}
                   style={{
                     fontFamily: formTextFontFamily,
                     fontSize: `${formTextFontSize}px`
